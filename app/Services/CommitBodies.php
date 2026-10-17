@@ -40,7 +40,7 @@ final readonly class CommitBodies
      */
     public function normalize(string $body): string
     {
-        return $this->codeSpans->mapProse(str_replace("\r\n", "\n", $body), static fn (string $prose): string => (string) preg_replace('/(?:[ \t]*\n){3,}/', "\n\n", $prose));
+        return $this->codeSpans->mapProse(str_replace(["\r\n", "\r"], "\n", $body), static fn (string $prose): string => (string) preg_replace('/(?:[ \t]*\n){3,}/', "\n\n", $prose));
     }
 
     /**
@@ -50,7 +50,7 @@ final readonly class CommitBodies
      */
     public function excerpt(string $body): ?string
     {
-        $body = str_replace("\r\n", "\n", $body);
+        $body = str_replace(["\r\n", "\r"], "\n", $body);
         $limit = $this->limit($body);
 
         if ($limit === null) {

@@ -12,6 +12,7 @@ it('collapses runs of blank lines in the prose into one', function (string $body
     'many blank lines' => ["a\n\n\n\n\n\nb", "a\n\nb"],
     'blank lines with spaces and tabs' => ["a \n\t\n  \n\nb", "a\n\nb"],
     'windows line breaks' => ["a\r\nb\r\n\r\n\r\n\r\nc", "a\nb\n\nc"],
+    'carriage return line breaks' => ["a\rb\r\r\rc", "a\nb\n\nc"],
     'blank lines in a code block' => ["a\n```py\ndef a():\n    pass\n\n\ndef b():\n    pass\n```\nb", "a\n```py\ndef a():\n    pass\n\n\ndef b():\n    pass\n```\nb"],
     'blank lines around a code block' => ["a\n\n\n\n```\ncode\n```\n\n\n\nb", "a\n\n```\ncode\n```\n\nb"],
 ]);
@@ -31,6 +32,7 @@ it('cuts a long body at the last whitespace that fits', function (string $body, 
     'in the middle of a word' => [str_repeat('word ', 56).'overflowing words', mb_rtrim(str_repeat('word ', 56)).'…'],
     'right before a whitespace' => [str_repeat('a', 280).' more', str_repeat('a', 280).'…'],
     'after the 8th line' => [implode("\n", range(1, 12)), implode("\n", range(1, 8)).'…'],
+    'carriage return line breaks' => [implode("\r", range(1, 12)), implode("\n", range(1, 8)).'…'],
     'multibyte characters' => [str_repeat('é ', 141), mb_rtrim(str_repeat('é ', 140)).'…'],
 ]);
 
