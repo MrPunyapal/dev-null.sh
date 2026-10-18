@@ -139,7 +139,7 @@ function CommitComposerBody({
     return (
         <div
             className="relative flex"
-            {...(poll === null ? attachments.dropzone : {})}
+            {...(poll === null && !isIssue ? attachments.dropzone : {})}
         >
             {attachments.isDraggingFiles && (
                 <ImageDropOverlay className="inset-2" />
@@ -179,7 +179,7 @@ function CommitComposerBody({
                             value={body}
                             onValueChange={issue.change}
                             onPaste={
-                                poll === null ? attachments.onPaste : undefined
+                                poll === null && !isIssue ? attachments.onPaste : undefined
                             }
                             onKeyDown={(event) =>
                                 preview.handleShortcut(event) ||

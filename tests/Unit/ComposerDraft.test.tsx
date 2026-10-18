@@ -491,6 +491,40 @@ test('typing a command and a space turns the draft into an issue, and backspace 
     assert.equal(view.form.props.onBefore(), true);
 });
 
+test('issue drafts block image paste and drop, then restore them for commits', () => {
+    let view = render();
+    const textarea = () =>
+        view.fields.find((element) => element.type === MentionTextarea)!;
+    const hasDropzone = () =>
+        view.fields.some(
+            (element) =>
+                element.props.onDragEnter !== undefined &&
+                element.props.onDrop !== undefined,
+        );
+
+    assert.equal(typeof textarea().props.onPaste, 'function');
+    assert.equal(hasDropzone(), true);
+
+    (textarea().props.onValueChange as (value: string) => void)(
+        '/bug Images do not belong in an issue',
+    );
+    draft.body = 'Images do not belong in an issue';
+    view = render();
+
+    assert.ok(
+        view.fields.some((element) => element.type === IssueCommandBadge),
+    );
+    assert.equal(textarea().props.onPaste, undefined);
+    assert.equal(hasDropzone(), false);
+    assert.deepEqual(draft.images, []);
+
+    keyDown(view, 'Backspace');
+    view = render();
+
+    assert.equal(typeof textarea().props.onPaste, 'function');
+    assert.equal(hasDropzone(), true);
+});
+
 test('picking a suggestion with Enter starts an empty issue, and the shortcut opens it instead of committing', () => {
     draft.body = '/';
     keyDown(render(), 'ArrowDown');
