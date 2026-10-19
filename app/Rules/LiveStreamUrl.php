@@ -12,8 +12,20 @@ final readonly class LiveStreamUrl implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! is_string($value) || ! LivePlatform::for($value) instanceof LivePlatform) {
+        $platform = is_string($value) ? LivePlatform::for($value) : null;
+
+        if (! $platform instanceof LivePlatform) {
             $fail('Use a link to your stream on YouTube.');
+
+            return;
+        }
+
+        $isLive = $platform->driver()->isLive($value);
+
+        if ($isLive === null) {
+            $fail('Could not verify the YouTube stream right now. Please try again.');
+        } elseif ($isLive === false) {
+            $fail('The YouTube video must be live right now.');
         }
     }
 }
