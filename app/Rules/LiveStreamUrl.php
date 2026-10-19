@@ -20,12 +20,5 @@ final readonly class LiveStreamUrl implements ValidationRule
             return;
         }
 
-        $isLive = $platform->driver()->isLive($value);
-
-        if ($isLive === null) {
-            $fail('Could not verify the YouTube stream right now. Please try again.');
-        } elseif ($isLive === false) {
-            $fail('The YouTube video must be live right now.');
-        }
     }
 }

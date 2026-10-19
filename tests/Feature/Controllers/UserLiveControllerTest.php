@@ -16,10 +16,8 @@ function liveUser(): User
     ]);
 }
 
-it('goes live with a YouTube stream for a few hours', function (string $url): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response('<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"jfKfPfyJRdk"},"microformat":{"playerMicroformatRenderer":{"liveBroadcastDetails":{"isLiveNow":true}}}};</script>'),
-    ]);
+it('accepts a YouTube video link without checking live status', function (string $url, string $videoId): void {
+    Http::fake();
 
     $user = User::factory()->create();
 
@@ -29,19 +27,22 @@ it('goes live with a YouTube stream for a few hours', function (string $url): vo
 
     expect($user->refresh())
         ->live_platform->toBe(LivePlatform::YouTube)
-        ->live_url->toBe('https://www.youtube.com/watch?v=jfKfPfyJRdk')
+        ->live_url->toBe("https://www.youtube.com/watch?v={$videoId}")
         ->and($user->live_ends_at?->toIso8601String())->toBe(now()->addHours(3)->toIso8601String());
 
     $this->get(route('user.show', $user))
         ->assertInertia(fn ($page) => $page
             ->where('user.live', [
-                'url' => 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
-                'thumbnail_url' => 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault_live.jpg',
+                'url' => "https://www.youtube.com/watch?v={$videoId}",
+                'thumbnail_url' => "https://i.ytimg.com/vi/{$videoId}/hqdefault_live.jpg",
             ]));
+
+    Http::assertNothingSent();
 })->with([
-    'live link' => 'https://www.youtube.com/live/jfKfPfyJRdk?si=share',
-    'watch link' => 'https://www.youtube.com/watch?v=jfKfPfyJRdk&t=42s',
-    'short link' => 'https://youtu.be/jfKfPfyJRdk',
+    'live link' => ['https://www.youtube.com/live/jfKfPfyJRdk?si=share', 'jfKfPfyJRdk'],
+    'watch link' => ['https://www.youtube.com/watch?v=jfKfPfyJRdk&t=42s', 'jfKfPfyJRdk'],
+    'short link' => ['https://youtu.be/jfKfPfyJRdk', 'jfKfPfyJRdk'],
+    'regular video' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'],
 ]);
 
 it('shows the live marker on their commits in the log', function (): void {
@@ -77,66 +78,8 @@ it('rejects links that are not a YouTube video', function (array $payload): void
     'too long' => fn (): array => ['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&x='.str_repeat('a', 2048)],
 ]);
 
-it('rejects videos that are not currently live', function (string $watchPage): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response($watchPage),
-    ]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->putJson(route('user-live.update'), [
-        'url' => 'https://www.youtube.com/live/dQw4w9WgXcQ',
-        'hours' => 2,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('url');
-
-    expect($user->refresh()->live_url)->toBeNull();
-})->with([
-    'regular video' => '<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"dQw4w9WgXcQ"}};</script>',
-    'upcoming stream' => '<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"dQw4w9WgXcQ"},"microformat":{"playerMicroformatRenderer":{"liveBroadcastDetails":{"isLiveNow":false}}}};</script>',
-    'finished stream' => '<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"dQw4w9WgXcQ"},"microformat":{"playerMicroformatRenderer":{"liveBroadcastDetails":{"isLiveNow":false,"endTimestamp":"2026-10-18T20:00:00Z"}}}};</script>',
-]);
-
-it('rejects a YouTube page that cannot be verified', function (): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response('<html>Consent required</html>'),
-    ]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->putJson(route('user-live.update'), [
-        'url' => 'https://youtu.be/dQw4w9WgXcQ',
-        'hours' => 2,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('url')
-        ->assertJsonPath('errors.url.0', 'Could not verify the YouTube stream right now. Please try again.');
-
-    expect($user->refresh()->live_url)->toBeNull();
-});
-
-it('rejects an unavailable YouTube response', function (): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response('YouTube unavailable', 503),
-    ]);
-
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->putJson(route('user-live.update'), [
-        'url' => 'https://youtu.be/dQw4w9WgXcQ',
-        'hours' => 2,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonPath('errors.url.0', 'Could not verify the YouTube stream right now. Please try again.');
-
-    expect($user->refresh()->live_url)->toBeNull();
-});
-
 it('takes between one and twelve hours', function (mixed $hours): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response('<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"dQw4w9WgXcQ"},"microformat":{"playerMicroformatRenderer":{"liveBroadcastDetails":{"isLiveNow":true}}}};</script>'),
-    ]);
+    Http::fake();
 
     $user = User::factory()->create();
 
@@ -177,10 +120,8 @@ it('stops showing the stream once its hours are up', function (): void {
         ->assertInertia(fn ($page) => $page->where('user.live', null));
 });
 
-it('limits the number of live stream checks per minute', function (): void {
-    Http::fake([
-        'https://www.youtube.com/watch*' => Http::response('<script>var ytInitialPlayerResponse = {"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"dQw4w9WgXcQ"},"microformat":{"playerMicroformatRenderer":{"liveBroadcastDetails":{"isLiveNow":true}}}};</script>'),
-    ]);
+it('limits live setting updates per minute', function (): void {
+    Http::fake();
 
     $user = User::factory()->create();
     $payload = ['url' => 'https://youtu.be/dQw4w9WgXcQ', 'hours' => 2];
@@ -191,7 +132,7 @@ it('limits the number of live stream checks per minute', function (): void {
 
     $this->actingAs($user)->put(route('user-live.update'), $payload)->assertStatus(429);
 
-    Http::assertSentCount(6);
+    Http::assertNothingSent();
 });
 
 it('requires authentication', function (): void {
