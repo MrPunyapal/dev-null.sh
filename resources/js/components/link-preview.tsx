@@ -4,6 +4,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { hostname } from '@/lib/urls';
 import type { LinkPreview as LinkPreviewData } from '@/types';
 
+/** Direct GIPHY media links can be displayed without a separate API request or uploaded file. */
+function isDirectGifUrl(value: string): boolean {
+    try {
+        const url = new URL(value);
+
+        return (
+            url.protocol === 'https:' &&
+            url.hostname === 'media.giphy.com' &&
+            url.pathname.toLowerCase().endsWith('.gif')
+        );
+    } catch {
+        return false;
+    }
+}
+
 const POLL_DELAYS = [1000, 2000, 3000, 5000, 8000, 13000];
 
 /**
@@ -117,6 +132,7 @@ export function LinkPreview({
         initialPreview,
     );
     const [isImageBroken, setIsImageBroken] = useState(false);
+    const [isGifBroken, setIsGifBroken] = useState(false);
     const imageUrl = isImageBroken ? null : preview.image_url;
 
     if (preview.embed) {
@@ -126,6 +142,28 @@ export function LinkPreview({
                 embed={preview.embed}
                 isStatic={isStatic}
             />
+        );
+    }
+
+    if (isDirectGifUrl(preview.url) && !isGifBroken) {
+        return (
+            <a
+                href={preview.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow ugc"
+                onClick={(event) => event.stopPropagation()}
+                className="mt-3 block overflow-hidden rounded-lg border bg-muted"
+                data-test="link-preview-gif"
+            >
+                <img
+                    src={preview.url}
+                    alt={preview.title ?? 'Animated GIF'}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={() => setIsGifBroken(true)}
+                    className="mx-auto block max-h-96 max-w-full object-contain"
+                />
+            </a>
         );
     }
 
