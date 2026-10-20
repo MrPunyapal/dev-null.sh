@@ -146,23 +146,32 @@ export function LinkPreview({
     }
 
     if (isDirectGifUrl(preview.url) && !isGifBroken) {
-        return (
+        const image = (
+            <img
+                src={preview.url}
+                alt={preview.title ?? 'Animated GIF'}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={() => setIsGifBroken(true)}
+                className="mx-auto block max-h-96 max-w-full object-contain"
+            />
+        );
+        const className = 'mt-3 block overflow-hidden rounded-lg border bg-muted';
+
+        return isStatic ? (
+            <div className={className} data-test="link-preview-gif">
+                {image}
+            </div>
+        ) : (
             <a
                 href={preview.url}
                 target="_blank"
                 rel="noopener noreferrer nofollow ugc"
                 onClick={(event) => event.stopPropagation()}
-                className="mt-3 block overflow-hidden rounded-lg border bg-muted"
+                className={className}
                 data-test="link-preview-gif"
             >
-                <img
-                    src={preview.url}
-                    alt={preview.title ?? 'Animated GIF'}
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={() => setIsGifBroken(true)}
-                    className="mx-auto block max-h-96 max-w-full object-contain"
-                />
+                {image}
             </a>
         );
     }
