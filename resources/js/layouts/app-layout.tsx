@@ -26,6 +26,7 @@ import { useFixedPage } from '@/hooks/use-fixed-page';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useNavOpen } from '@/hooks/use-nav-open';
 import { useTabSlide } from '@/hooks/use-tab-slide';
+import { useUnreadNotificationTitle } from '@/hooks/use-unread-notification-title';
 import { signIn } from '@/lib/auth';
 import { backgroundPollOptions } from '@/lib/background-poll';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         openSearch,
         compose,
     );
+    useUnreadNotificationTitle(auth.unreadNotificationsCount);
     useTabSlide();
     useFixedPage(isMessages);
     useRemoteAlerts(auth.remotes !== null ? (auth.user?.id ?? null) : null);
@@ -170,7 +172,7 @@ function NotificationCountPolling({ onNotFound }: { onNotFound: () => void }) {
                 return false;
             },
         }),
-        { mode: 'rest', background: 'pause' },
+        { mode: 'rest', background: 'throttle' },
     );
 
     return null;
