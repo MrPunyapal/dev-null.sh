@@ -14,6 +14,7 @@ use App\Models\LinkPreview;
 use App\Models\User;
 use App\Services\Features;
 use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -127,6 +128,28 @@ it('orders a late approval ahead of newer submissions', function (): void {
             ->where('commits.data.1.body', 'Already public')
             ->missing('commits.data.0.feed_at'));
 });
+
+it('starts a chronological log at the first page for a cursor from before approval ordering', function (Log $log): void {
+    $user = User::factory()->create();
+    $commits = Commit::factory()->for($user)->count(25)->sequence(
+        fn ($sequence): array => ['created_at' => now()->subMinutes($sequence->index)],
+    )->create();
+
+    $legacyCursor = (new Cursor([
+        'created_at' => $commits[19]->created_at->toDateTimeString(),
+        'id' => $commits[19]->id,
+    ], true))->encode();
+
+    $response = $this->actingAs($user)->get(route('log.show', [
+        $log,
+        'cursor' => $legacyCursor,
+    ]));
+
+    $response->assertOk();
+
+    expect(array_column($response->inertiaProps('commits.data'), 'id'))
+        ->toEqual($commits->take(20)->modelKeys());
+})->with([Log::Latest, Log::Following]);
 
 it('paginates the approval-ordered log without repeating commits', function (): void {
     $user = User::factory()->create();
