@@ -81,6 +81,10 @@ export function SearchDialog({
     excludeId,
     onAction,
     isLive = false,
+    pickerTitle = 'New remote',
+    pickerPlaceholder = 'Message a developer',
+    pickerScope = 'remote',
+    onCloseAutoFocus,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -88,6 +92,10 @@ export function SearchDialog({
     excludeId?: string;
     onAction?: (action: SearchAction) => void;
     isLive?: boolean;
+    pickerTitle?: string;
+    pickerPlaceholder?: string;
+    pickerScope?: 'remote' | 'share';
+    onCloseAutoFocus?: (event: Event) => void;
 }) {
     const userId = usePage().props.auth.user?.id ?? null;
     const recentSearches = useRecentSearches(userId);
@@ -105,7 +113,10 @@ export function SearchDialog({
     const developers = useDebouncedSearch(
         developerTerm,
         developerDebounce,
-        isPicking ? searchRemoteCandidates : searchDevelopers,
+        isPicking
+            ? (value, signal) =>
+                  searchCandidates(value, { for: pickerScope }, signal)
+            : searchDevelopers,
     );
     const commits = useDebouncedSearch(
         commitTerm,
@@ -239,11 +250,12 @@ export function SearchDialog({
             <DialogPortal>
                 <DialogOverlay />
                 <DialogPrimitive.Content
+                    onCloseAutoFocus={onCloseAutoFocus}
                     className="fixed top-[12vh] left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-[0_24px_48px_-16px_rgb(0_0_0/0.4)] duration-200 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=closed]:zoom-out-95 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:zoom-in-95 sm:max-w-xl"
                     data-test="search"
                 >
                     <DialogPrimitive.Title className="sr-only">
-                        {isPicking ? 'New remote' : 'Search'}
+                        {isPicking ? pickerTitle : 'Search'}
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Description className="sr-only">
                         {isPicking
@@ -262,7 +274,7 @@ export function SearchDialog({
                             onKeyDown={onKeyDown}
                             placeholder={
                                 isPicking
-                                    ? 'Message a developer'
+                                    ? pickerPlaceholder
                                     : 'Search developers or commits'
                             }
                             role="combobox"

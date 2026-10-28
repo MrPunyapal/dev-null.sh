@@ -1938,7 +1938,7 @@ export async function searchConversations(
  */
 export async function searchCandidates(
     term: string,
-    scope: { for: 'remote' | 'org' } | { org: string },
+    scope: { for: 'remote' | 'org' | 'share' } | { org: string },
     signal: AbortSignal,
 ): Promise<Candidate[]> {
     const response = await fetch(
