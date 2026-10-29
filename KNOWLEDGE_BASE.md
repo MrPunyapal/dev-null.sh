@@ -398,19 +398,31 @@ Direct remotes disappear from the inbox when the other person deletes their acco
 
 ### Remotes: calls
 
-In the web app, a direct remote that has already started can make a one-on-one **call** from the phone button next to Ping in its composer, on the Remotes page or in the dock. Calls work wherever a ping would: both people need Remotes on, no block, and a conversation someone has already said something in. Orgs can't be called yet, and the Mac and mobile apps can't make or answer calls yet.
+In the web app, a direct remote that has already started can make a one-on-one **call** from the phone button next to Ping in its composer, on the Remotes page or in the dock. Calls work wherever a ping would: both people need Remotes on, no block, and a conversation someone has already said something in. Orgs have calls too (see below). The Mac and mobile apps can't make or answer calls yet.
 
 The call lives on top of that remote's composer: confirming, ringing, and then the call itself with its timer, mute, camera, and **Hang up**. Messages you send during a call are ordinary messages in the same remote. A call is between two people, so it ends for both as soon as either hangs up. Screen sharing is shown as coming soon.
 
-Calls are **relayed and encrypted**. The audio and video go through Cloudflare's relay (TURN), encrypted by the browsers (WebRTC) from one end to the other, so neither the relay nor /dev/null can hear or see a call. Because everything goes through the relay, **neither person ever sees the other's IP address**, only the relay's. Cloudflare's relay does see both people's IP addresses, that a call is happening, and for how long, but not what is said or shown. /dev/null only passes on the two short messages the browsers need to set up the call, held encrypted in a short-lived cache for as long as the call rings and then forgotten, and fetches short-lived relay credentials from Cloudflare for each call without storing them. Nothing about a call is saved: no call history, no recordings, and nothing in your export.
+Calls are **relayed and encrypted**. The audio and video go through Cloudflare's relay (TURN), encrypted by the browsers (WebRTC) from one end to the other, so neither the relay nor /dev/null can hear or see a call. Because everything goes through the relay, **neither person ever sees the other's IP address**, only the relay's. Cloudflare's relay does see both people's IP addresses, that a call is happening, and for how long, but not what is said or shown. /dev/null only passes on the two short messages the browsers need to set up the call, held encrypted in a short-lived cache for as long as the call rings and then forgotten, and fetches short-lived relay credentials from Cloudflare for each call without storing them. The call itself is never saved: no recordings, and nothing of what is said or shown.
 
-Before calling, the composer asks you to confirm. An incoming call shows **Accept** and **Decline**: in that remote's composer when you have it open, and otherwise in a bar at the top of whatever page you're on, so you can answer from anywhere while /dev/null is open in a visible tab. From any page, the same bar lets you mute, turn the camera on or off, hang up, or jump back to the remote.
+Before calling, the composer asks you to confirm. An incoming call shows **Accept** and **Decline**: in that remote's composer when you have it open, and otherwise in a bar at the top of whatever page you're on, so you can answer from anywhere while /dev/null is open in a visible tab. From any page, the same bar lets you mute, turn the camera on or off, hang up, or jump back to the remote. A call only lasts as long as the page: closing or reloading the tab, or opening a page that can't keep it going, such as Operations, asks you first and then ends the call.
+
+Calls leave short log lines in the remote's history, like pings do: who **started a call**, and whether it was **answered**, **cancelled**, **declined**, or **missed** when it rang out. They are ordinary entries in that remote, so they go with your export and your account like your messages do. They record that a call happened, never its contents or how long it lasted.
 
 Once connected, the call shows a short code such as `fp 3f9a c217`, made from both browsers' encryption keys. If you both read out the same code, nobody is listening in between, /dev/null included.
 
 The camera starts off; turning it on asks the browser for camera access and shows both of you side by side above the composer. A call rings for 45 seconds with Windows Live Messenger's own ring, unless that remote is muted or your sound is off; the caller hears Messenger's outgoing ring while waiting, and its hang-up tone plays when a call ends. If the relay can't be reached, the call says **Couldn't connect the call**.
 
 Sources: [call flow](resources/js/lib/call.ts), [call console and bar](resources/js/components/chat/call.tsx), [who can call](app/Http/Requests/CreateConversationCallRequest.php), [call storage](app/Actions/CreateConversationCall.php), [relay](app/Services/TurnProviders/CloudflareTurnProvider.php).
+
+### Remotes: org calls
+
+Anyone in an org can start a **call** from the phone button next to Ping in the org's composer. Starting one rings everyone else in the org for 45 seconds, with the same Messenger ring, unless they muted that org or turned their sound off. They can **Join** or **Decline** from the org's composer or from the bar at the top of any page. A call doesn't end when people don't pick up: while anyone is still in it, the org's composer shows **Call going on** with who is in it, and anyone in the org can join at any time. Leaving takes only you out, and the call ends when the last person leaves. While you're alone in it, you hear the outgoing ring as long as it rings the org.
+
+An org call holds up to 8 people. Each person's browser connects to every other's through the same relay, encrypted from one browser to the other like a one-on-one call. Nobody sees anyone else's IP address, and /dev/null only passes on the short setup messages between each two browsers. The call itself, who is in it and those messages live in a short-lived cache, forgotten seconds after the last person leaves. The org's history logs who **started a call**, like it logs pings; nothing else about the call is saved, and there are no recordings. Hovering over someone in the call shows the `fp` code you share with them.
+
+Mute, camera and screen sharing work like a one-on-one call: once someone turns their camera on, everyone's cameras show above the composer. You can be on one call at a time, so while you're in an org call nobody can call you one-on-one.
+
+Sources: [org call flow](resources/js/lib/org-call.ts), [who can join](app/Http/Requests/CreateOrgCallRequest.php), [org call storage](app/Actions/CreateOrgCall.php).
 
 ### Orgs: group chats
 

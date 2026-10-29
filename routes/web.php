@@ -83,6 +83,8 @@ use App\Http\Controllers\OrganizationLaneController;
 use App\Http\Controllers\OrganizationMentionController;
 use App\Http\Controllers\OrganizationSitemapController;
 use App\Http\Controllers\OrgArchiveController;
+use App\Http\Controllers\OrgCallController;
+use App\Http\Controllers\OrgCallIceServerController;
 use App\Http\Controllers\OrgController;
 use App\Http\Controllers\OrgMemberController;
 use App\Http\Controllers\OrgMessageController;
@@ -442,6 +444,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('remotes/candidates', [RemoteCandidateController::class, 'index'])->name('remote-candidate.index');
         Route::post('remotes/orgs', [OrgController::class, 'store'])->middleware([PreventPostingInTimeout::class, 'throttle:messages'])->name('org.store');
         Route::put('remotes/orgs/{org}', [OrgController::class, 'update'])->whereUuid('org')->middleware(PreventPostingInTimeout::class)->name('org.update');
+        Route::put('remotes/orgs/{org}/call', [OrgCallController::class, 'update'])->whereUuid('org')->name('org-call.update');
+        Route::delete('remotes/orgs/{org}/call', [OrgCallController::class, 'destroy'])->whereUuid('org')->name('org-call.destroy');
         Route::get('remotes/orgs/{org}/messages', [OrgMessageController::class, 'index'])->whereUuid('org')->name('org-message.index');
         Route::put('remotes/orgs/{org}/read', [OrgReadController::class, 'update'])->whereUuid('org')->name('org-read.update');
         Route::put('remotes/orgs/{org}/typing', [OrgTypingController::class, 'update'])->whereUuid('org')->name('org-typing.update');
@@ -493,6 +497,14 @@ Route::middleware('auth')->group(function (): void {
     Route::post('remotes/@{partner:handle}/ping', [ConversationPingController::class, 'store'])
         ->middleware([PreventPostingInTimeout::class, 'throttle:pings'])
         ->name('conversation-ping.store');
+    Route::get('remotes/orgs/{org}/call/ice-servers', [OrgCallIceServerController::class, 'index'])
+        ->whereUuid('org')
+        ->middleware('throttle:messages')
+        ->name('org-call-ice-server.index');
+    Route::post('remotes/orgs/{org}/call', [OrgCallController::class, 'store'])
+        ->whereUuid('org')
+        ->middleware([PreventPostingInTimeout::class, 'throttle:messages'])
+        ->name('org-call.store');
     Route::post('remotes/orgs/{org}/ping', [OrgPingController::class, 'store'])
         ->whereUuid('org')
         ->middleware([PreventPostingInTimeout::class, 'throttle:pings'])

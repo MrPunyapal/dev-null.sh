@@ -17,7 +17,11 @@ import {
     useState,
 } from 'react';
 import { toast } from 'sonner';
-import { CallButton, CallConsole } from '@/components/chat/call';
+import {
+    CallButton,
+    CallConsole,
+    OrgCallConsole,
+} from '@/components/chat/call';
 import {
     LiftedMessage,
     MessageImages,
@@ -834,6 +838,7 @@ export function ConversationThread({
             {isOpen ? (
                 <Composer
                     target={current}
+                    user={user}
                     draft={draft}
                     members={isOrg ? thread?.members : undefined}
                     replyingTo={replyingTo}
@@ -1044,7 +1049,13 @@ const ThreadItem = memo(function ThreadItem({
     }
 
     if (item.kind === 'event') {
-        return <EventLine message={item.message} user={user} />;
+        return (
+            <EventLine
+                message={item.message}
+                user={user}
+                partner={target.kind === 'direct' ? target.partner : undefined}
+            />
+        );
     }
 
     return (
@@ -1622,6 +1633,7 @@ function ReplyPreview({
  */
 function Composer({
     target,
+    user,
     members,
     draft,
     replyingTo,
@@ -1633,6 +1645,7 @@ function Composer({
     onReplySettled,
 }: {
     target: ChatTarget;
+    user: User;
     members: OrgMember[] | undefined;
     draft: MessageDraftState;
     replyingTo: MessageReply | null;
@@ -1852,9 +1865,16 @@ function Composer({
                     isCompact ? 'p-2.5' : 'px-4 py-3',
                 )}
             >
-                {target.kind === 'direct' && (
+                {target.kind === 'direct' ? (
                     <CallConsole
                         partner={target.partner}
+                        isConfirming={isConfirmingCall}
+                        onConfirmingChange={setIsConfirmingCall}
+                    />
+                ) : (
+                    <OrgCallConsole
+                        org={target.org}
+                        user={user}
                         isConfirming={isConfirmingCall}
                         onConfirmingChange={setIsConfirmingCall}
                     />
@@ -1960,13 +1980,15 @@ function Composer({
                                 </TooltipTrigger>
                                 <TooltipContent>{pingLabel}</TooltipContent>
                             </Tooltip>
-                            {target.kind === 'direct' && (
-                                <CallButton
-                                    partner={target.partner}
-                                    isCompact={isCompact}
-                                    onClick={() => setIsConfirmingCall(true)}
-                                />
-                            )}
+                            <CallButton
+                                label={
+                                    target.kind === 'direct'
+                                        ? `Call @${target.partner.handle}`
+                                        : `Call ${target.org.name ?? 'the org'}`
+                                }
+                                isCompact={isCompact}
+                                onClick={() => setIsConfirmingCall(true)}
+                            />
                             <div className="relative min-w-0 flex-1">
                                 <MentionTextarea
                                     id={id}
