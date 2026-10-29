@@ -153,3 +153,36 @@ it('keeps listing the commits that mentioned the organization before it was rena
             ->where('commits.data.0.id', $commit->id)
             ->where('commits.data.0.organization_mentions.laravel', $organization->id));
 });
+
+it('moves an organization for good to the handle in its own case, keeping the query string', function (): void {
+    Profile::factory()->organization()->create(['handle' => 'Laravel']);
+
+    $this->get('/@laravel?tab=mentions')
+        ->assertMovedPermanently()
+        ->assertRedirect('/@Laravel?tab=mentions')
+        ->assertHeader('Cache-Control', 'max-age=86400, private');
+
+    $this->get('/@Laravel')->assertOk();
+});
+
+it('keeps the query string out of the handle it moves an organization to', function (): void {
+    Profile::factory()->organization()->create(['handle' => 'Laravel']);
+
+    $this->get('/@laravel?user=evil')->assertRedirect('/@Laravel?user=evil');
+    $this->get('/@laravel?user[]=a&user[]=b')->assertRedirect('/@Laravel?user[]=a&user[]=b');
+    $this->get('/@laravel?tag=one&tag=two')->assertRedirect('/@Laravel?tag=one&tag=two');
+});
+
+it('opens each organization at its own case when a stale one holds the handle in another case', function (): void {
+    $lower = Profile::factory()->organization()->create(['handle' => 'laravel']);
+    $mixed = Profile::factory()->organization()->create(['handle' => 'Laravel']);
+
+    $this->get('/@laravel')->assertOk()->assertInertia(fn ($page) => $page->where('organization.id', $lower->id));
+    $this->get('/@Laravel')->assertOk()->assertInertia(fn ($page) => $page->where('organization.id', $mixed->id));
+
+    $location = (string) $this->get('/@LARAVEL')->assertMovedPermanently()->headers->get('Location');
+
+    expect($location)->toBeIn([url('/@laravel'), url('/@Laravel')]);
+
+    $this->get($location)->assertOk();
+});
