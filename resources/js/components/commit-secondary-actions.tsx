@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { LinkIcon, Send, Share2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { Ref } from 'react';
 import CommitController from '@/actions/App/Http/Controllers/CommitController';
 import ConversationController from '@/actions/App/Http/Controllers/ConversationController';
 import { CommitReportButton } from '@/components/commit-report-button';
@@ -42,7 +43,9 @@ export function CommitSecondaryActions({
     isReply?: boolean;
 }) {
     const { auth } = usePage().props;
+    const shareTriggerRef = useRef<HTMLButtonElement>(null);
     const [isPicking, setIsPicking] = useState(false);
+    const [isPickerMounted, setIsPickerMounted] = useState(false);
     const [recipient, setRecipient] = useState<User | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const canSend =
@@ -52,6 +55,7 @@ export function CommitSecondaryActions({
 
     const pickRecipient = () => {
         setRecipient(null);
+        setIsPickerMounted(true);
         setIsPicking(true);
     };
 
@@ -91,11 +95,13 @@ export function CommitSecondaryActions({
                     commit={commit}
                     keyShortcut={keyShortcut}
                     canSend={canSend}
+                    isPickerMounted={isPickerMounted}
+                    triggerRef={shareTriggerRef}
                     onSend={pickRecipient}
                 />
                 <CommitReportButton commit={commit} />
             </div>
-            {canSend && (isPicking || recipient !== null) && (
+            {canSend && isPickerMounted && (
                 <SearchDialog
                     open={isPicking}
                     onOpenChange={setIsPicking}
@@ -104,14 +110,27 @@ export function CommitSecondaryActions({
                     pickerTitle="Send commit in Remotes"
                     pickerPlaceholder="Find a developer"
                     pickerScope="share"
-                    onCloseAutoFocus={() => {
-                        if (recipient !== null) setIsConfirming(true);
+                    onCloseAutoFocus={(event) => {
+                        event.preventDefault();
+                        setIsPickerMounted(false);
+
+                        if (recipient !== null) {
+                            setIsConfirming(true);
+                        } else {
+                            shareTriggerRef.current?.focus();
+                        }
                     }}
                 />
             )}
             {canSend && recipient !== null && (
                 <Dialog open={isConfirming} onOpenChange={setIsConfirming}>
-                    <DialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card">
+                    <DialogContent
+                        className="grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card"
+                        onCloseAutoFocus={(event) => {
+                            event.preventDefault();
+                            shareTriggerRef.current?.focus();
+                        }}
+                    >
                         <DialogHeader className="text-left">
                             <DialogTitle className="min-w-0 pr-6 wrap-anywhere">
                                 Send commit to @{recipient.handle}?
@@ -152,11 +171,15 @@ function CommitShareMenu({
     commit,
     keyShortcut,
     canSend,
+    isPickerMounted,
+    triggerRef,
     onSend,
 }: {
     commit: Commit;
     keyShortcut?: string;
     canSend: boolean;
+    isPickerMounted: boolean;
+    triggerRef: Ref<HTMLButtonElement>;
     onSend: () => void;
 }) {
     const { copyLink } = useCopyLink(commit);
@@ -178,6 +201,7 @@ function CommitShareMenu({
                     <TooltipTrigger asChild>
                         <DropdownMenuTrigger asChild>
                             <button
+                                ref={triggerRef}
                                 type="button"
                                 aria-label="Share commit"
                                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-accent data-[state=open]:text-foreground"
@@ -189,7 +213,13 @@ function CommitShareMenu({
                     </TooltipTrigger>
                     <TooltipContent>Share</TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent
+                    align="end"
+                    className="w-48"
+                    onCloseAutoFocus={(event) => {
+                        if (isPickerMounted) event.preventDefault();
+                    }}
+                >
                     <DropdownMenuItem
                         onSelect={copyLink}
                         data-test="copy-commit-link"

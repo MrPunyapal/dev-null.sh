@@ -7,6 +7,8 @@ import type { Commit, User } from '../../resources/js/types';
 
 let state: unknown[] = [];
 let cursor = 0;
+let refs: Array<{ current: unknown }> = [];
+let refCursor = 0;
 let signedIn = true;
 let remotesEnabled = true;
 const sendMessage = vi.fn();
@@ -19,6 +21,11 @@ vi.doMock('react', () => ({
         const index = cursor++;
         if (!(index in state)) state[index] = initial;
         return [state[index], (next: unknown) => (state[index] = next)];
+    },
+    useRef: (initial: unknown) => {
+        const index = refCursor++;
+        if (!(index in refs)) refs[index] = { current: initial };
+        return refs[index];
     },
 }));
 vi.doMock('@inertiajs/react', () => ({
@@ -63,6 +70,8 @@ type Element = ReactElement<Record<string, unknown>>;
 
 afterEach(() => {
     state = [];
+    refs = [];
+    refCursor = 0;
     signedIn = true;
     remotesEnabled = true;
     sendMessage.mockClear();
@@ -85,6 +94,7 @@ function elements(node: ReactNode): Element[] {
 
 function render(value: Commit = commit, keyShortcut?: string): Element[] {
     cursor = 0;
+    refCursor = 0;
     return elements(
         CommitSecondaryActions({ commit: value, keyShortcut }),
     ).flatMap((element) =>
@@ -123,7 +133,9 @@ function confirm(value: Commit = commit): Element[] {
     const picker = selected.find(
         (element) => element.props.pickerScope === 'share',
     )!;
-    (picker.props.onCloseAutoFocus as () => void)();
+    (picker.props.onCloseAutoFocus as (event: Event) => void)(
+        { preventDefault() {} } as Event,
+    );
     return render(value);
 }
 
@@ -167,8 +179,8 @@ test('picking a recipient waits for the picker to close and never sends by itsel
     assert.equal(sendMessage.mock.calls.length, 0);
     (
         selected.find((element) => element.props.pickerScope === 'share')!.props
-            .onCloseAutoFocus as () => void
-    )();
+            .onCloseAutoFocus as (event: Event) => void
+    )({ preventDefault() {} } as Event);
     assert.equal(
         render().find((element) => element.type === Dialog)!.props.open,
         true,
@@ -291,4 +303,89 @@ test('sharing an absolute permalink preserves its host', () => {
         sendMessage.mock.calls[0][1].body,
         'https://dev-null.sh/@author/commits/123e4567-e89b-12d3-a456-426614174000',
     );
+});
+
+test('opening the picker prevents the Share menu from stealing focus', () => {
+    (
+        render().find(
+            (element) => element.props['data-test'] === 'share-in-remotes',
+        )!.props.onSelect as () => void
+    )();
+
+    const tree = render();
+    const menu = tree.find(
+        (element) =>
+            element.props.align === 'end' &&
+            typeof element.props.onCloseAutoFocus === 'function',
+    )!;
+    const preventDefault = vi.fn();
+
+    (menu.props.onCloseAutoFocus as (event: Event) => void)(
+        { preventDefault } as unknown as Event,
+    );
+
+    assert.equal(preventDefault.mock.calls.length, 1);
+    assert.ok(tree.some((element) => element.props.pickerScope === 'share'));
+});
+
+test('cancelling the recipient picker restores focus to Share', () => {
+    (
+        render().find(
+            (element) => element.props['data-test'] === 'share-in-remotes',
+        )!.props.onSelect as () => void
+    )();
+
+    const pickerTree = render();
+    const menu = pickerTree.find(
+        (element) => typeof element.props.onSend === 'function',
+    )!;
+    const focus = vi.fn();
+    (menu.props.triggerRef as { current: unknown }).current = { focus };
+
+    const picker = pickerTree.find(
+        (element) => element.props.pickerScope === 'share',
+    )!;
+    (picker.props.onOpenChange as (open: boolean) => void)(false);
+    const preventDefault = vi.fn();
+    (
+        render().find(
+            (element) => element.props.pickerScope === 'share',
+        )!.props.onCloseAutoFocus as (event: Event) => void
+    )({ preventDefault } as unknown as Event);
+
+    assert.equal(preventDefault.mock.calls.length, 1);
+    assert.equal(focus.mock.calls.length, 1);
+    assert.equal(sendMessage.mock.calls.length, 0);
+    assert.equal(
+        render().some((element) => element.props.pickerScope === 'share'),
+        false,
+    );
+});
+
+test('closing the confirmation returns focus to Share', () => {
+    const tree = confirm();
+    const menu = tree.find(
+        (element) => typeof element.props.onSend === 'function',
+    )!;
+    const focus = vi.fn();
+    (menu.props.triggerRef as { current: unknown }).current = { focus };
+
+    const cancel = tree.find(
+        (element) => element.props.variant === 'outline',
+    )!;
+    (cancel.props.onClick as () => void)();
+
+    const preventDefault = vi.fn();
+    const content = render().find(
+        (element) =>
+            typeof element.props.className === 'string' &&
+            element.props.className.includes('grid-rows-[auto_minmax(0,1fr)_auto]'),
+    )!;
+    (content.props.onCloseAutoFocus as (event: Event) => void)(
+        { preventDefault } as unknown as Event,
+    );
+
+    assert.equal(preventDefault.mock.calls.length, 1);
+    assert.equal(focus.mock.calls.length, 1);
+    assert.equal(sendMessage.mock.calls.length, 0);
 });
