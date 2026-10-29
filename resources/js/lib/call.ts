@@ -2,7 +2,7 @@ import CallController from '@/actions/App/Http/Controllers/CallController';
 import ConversationCallController from '@/actions/App/Http/Controllers/ConversationCallController';
 import ConversationCallIceServerController from '@/actions/App/Http/Controllers/ConversationCallIceServerController';
 import { ChatRequestError, request } from '@/lib/chat';
-import { playPing } from '@/lib/remote-notifications';
+import { remoteAlertsEnabled } from '@/lib/remote-notifications';
 import type { User } from '@/types';
 
 /**
@@ -43,6 +43,10 @@ let microphone: MediaStream | null = null;
 let camera: MediaStream | null = null;
 let partnerCamera: MediaStream | null = null;
 let speaker: HTMLAudioElement | null = null;
+/**
+ * MSN's ring while a call rings: the incoming one for the callee, the outgoing one for the caller.
+ */
+let ringing: HTMLAudioElement | null = null;
 let timer: number | undefined;
 let endTimer: number | undefined;
 /**
@@ -85,8 +89,23 @@ export function showCallConsole(handle: string): () => void {
 }
 
 function update(next: CallState): void {
+    if (next.status !== state.status) {
+        ringing?.pause();
+        ringing = null;
+
+        if (next.status === 'calling') {
+            ring('/sounds/ringback.mp3');
+        }
+    }
+
     state = next;
     notify();
+}
+
+function ring(sound: string): void {
+    ringing = new Audio(sound);
+    ringing.loop = true;
+    void ringing.play().catch(() => undefined);
 }
 
 function notify(): void {
@@ -326,14 +345,13 @@ export function watchIncomingCalls(userId: string): () => void {
                         partner: call.partner,
                         sdp: call.sdp,
                     });
-                }
 
-                if (
-                    call !== null &&
-                    !call.is_muted &&
-                    state.status === 'ringing'
-                ) {
-                    playPing(userId);
+                    if (
+                        !call.is_muted &&
+                        remoteAlertsEnabled(userId, 'sound')
+                    ) {
+                        ring('/sounds/ring.mp3');
+                    }
                 }
             } catch {
                 // Try again on the next poll.
@@ -539,6 +557,11 @@ function end(partner: User, reason: string): void {
 
     if (speaker !== null) {
         speaker.srcObject = null;
+    }
+
+    // A call that never rang through on this side, a missed one, ends quietly.
+    if (state.status !== 'ringing') {
+        void new Audio('/sounds/hangup.mp3').play().catch(() => undefined);
     }
 
     update({ status: 'ended', partner, reason });

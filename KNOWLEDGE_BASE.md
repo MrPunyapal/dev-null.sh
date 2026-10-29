@@ -408,7 +408,7 @@ Before calling, the composer asks you to confirm. An incoming call shows **Accep
 
 Once connected, the call shows a short code such as `fp 3f9a c217`, made from both browsers' encryption keys. If you both read out the same code, nobody is listening in between, /dev/null included.
 
-The camera starts off; turning it on asks the browser for camera access and shows both of you side by side above the composer. A call rings for 45 seconds. It plays the ping sound unless that remote is muted or your sound is off. If the relay can't be reached, the call says **Couldn't connect the call**.
+The camera starts off; turning it on asks the browser for camera access and shows both of you side by side above the composer. A call rings for 45 seconds with Windows Live Messenger's own ring, unless that remote is muted or your sound is off; the caller hears Messenger's outgoing ring while waiting, and its hang-up tone plays when a call ends. If the relay can't be reached, the call says **Couldn't connect the call**.
 
 Sources: [call flow](resources/js/lib/call.ts), [call console and bar](resources/js/components/chat/call.tsx), [who can call](app/Http/Requests/CreateConversationCallRequest.php), [call storage](app/Actions/CreateConversationCall.php), [relay](app/Services/TurnProviders/CloudflareTurnProvider.php).
 
