@@ -18,8 +18,7 @@ final class CreateConversationCallRequest extends FormRequest
 {
     /**
      * A call goes where a ping could: into a conversation that has started, to someone who can still be pushed to,
-     * and not over another call already ringing for them,
-     * or one of their orgs' calls they're in.
+     * and not over another call ringing for them, nor into an org's call either of them is in.
      */
     public function authorize(PushAccessQuery $access, CallQuery $calls, OrgCallQuery $orgCalls, TurnProvider $turn): Response
     {

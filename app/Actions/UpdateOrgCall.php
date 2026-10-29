@@ -32,9 +32,9 @@ final readonly class UpdateOrgCall
             Cache::put(CreateOrgCall::memberKey($user->id), $org->id, CreateOrgCall::SECONDS);
             Cache::touch(CreateOrgCall::key($org), CreateOrgCall::SECONDS);
 
-            Cache::putMany(collect($signals)->mapWithKeys(fn (array $signal, string $toId): array => [
-                CreateOrgCall::signalKey($org, $user->id, $toId) => Crypt::encryptString(json_encode($signal, JSON_THROW_ON_ERROR)),
-            ])->all(), CreateConversationCall::SECONDS);
+            foreach ($signals as $toId => $signal) {
+                Cache::put(CreateOrgCall::signalKey($org, $user->id, $toId), Crypt::encryptString(json_encode($signal, JSON_THROW_ON_ERROR)), CreateConversationCall::SECONDS);
+            }
         });
     }
 }

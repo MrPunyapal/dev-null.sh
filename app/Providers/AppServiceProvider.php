@@ -26,7 +26,7 @@ use Tempest\Highlight\Highlighter;
 final class AppServiceProvider extends ServiceProvider
 {
     /**
-     * The services bound in every environment but local.
+     * The services bound in every environment but local and testing.
      *
      * @var array<class-string, class-string>
      */
@@ -35,7 +35,7 @@ final class AppServiceProvider extends ServiceProvider
     ];
 
     /**
-     * The services bound in the local environment instead, so nothing there needs a third party.
+     * The services bound in the local and testing environments instead, so nothing there needs a third party.
      *
      * @var array<class-string, class-string>
      */
@@ -47,7 +47,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(DnsResolver::class, SystemDnsResolver::class);
 
-        $services = $this->app->isLocal()
+        $services = $this->app->environment('local', 'testing')
             ? self::LOCAL_SERVICES
             : self::PRODUCTION_SERVICES;
 
