@@ -6,12 +6,31 @@ export function commitActionForShortcut(
     key: string,
     activeTarget: Element | null,
     pageCommit: Element | null,
-): HTMLButtonElement | null {
-    const action = (
-        activeTarget ?? (key === 'r' ? pageCommit : null)
-    )?.querySelector<HTMLButtonElement>(
+): HTMLButtonElement | HTMLTextAreaElement | null {
+    const target = activeTarget ?? (key === 'r' ? pageCommit : null);
+    const action = target?.querySelector<HTMLButtonElement>(
         `button[aria-keyshortcuts="${CSS.escape(key)}"]`,
     );
 
-    return action && !action.closest('[inert]') ? action : null;
+    if (action && !action.closest('[inert]')) {
+        return action;
+    }
+
+    if (key !== 'r' || !target) {
+        return null;
+    }
+
+    // A reply button loses its shortcut while its composer is open.
+    // Only focus the composer belonging to this commit or reply, not a nested one.
+    return (
+        Array.from(
+            target.querySelectorAll<HTMLTextAreaElement>(
+                '[data-test="reply-composer"] textarea',
+            ),
+        ).find(
+            (textarea) =>
+                textarea.closest('[data-reply], [data-commit]') === target &&
+                !textarea.closest('[inert]'),
+        ) ?? null
+    );
 }

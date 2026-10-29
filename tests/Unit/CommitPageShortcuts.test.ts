@@ -12,8 +12,9 @@ function card(
     keys: string[],
     clicks: string[],
     inert = false,
+    focuses?: string[],
 ): Element {
-    return {
+    const element = {
         querySelector: (selector: string) => {
             const key = selector.match(/^button\[aria-keyshortcuts="(.+)"\]$/)?.[1];
 
@@ -24,12 +25,33 @@ function card(
                   }
                 : null;
         },
-    } as unknown as Element;
+        querySelectorAll: (selector: string) =>
+            selector === '[data-test="reply-composer"] textarea' && focuses
+                ? [
+                      {
+                          tagName: 'TEXTAREA',
+                          focus: () => focuses.push(name),
+                          closest: (selector: string) =>
+                              selector === '[data-reply], [data-commit]'
+                                  ? element
+                                  : inert
+                                    ? {}
+                                    : null,
+                      },
+                  ]
+                : [],
+    };
+
+    return element as unknown as Element;
 }
 
 function press(key: string, active: Element | null, page: Element | null): boolean {
     const action = commitActionForShortcut(key, active, page);
-    action?.click();
+    if (action?.tagName === 'TEXTAREA') {
+        action.focus();
+    } else {
+        action?.click();
+    }
 
     return action !== null;
 }
@@ -74,4 +96,32 @@ test('actions inside inert commits are not triggered', () => {
 
     assert.equal(press('r', card('deleted', ['r'], clicks, true), null), false);
     assert.deepEqual(clicks, []);
+});
+
+test('reply focuses an already open composer without cancelling it', () => {
+    const clicks: string[] = [];
+    const focuses: string[] = [];
+    const main = card('main', [], clicks, false, focuses);
+
+    assert.equal(press('r', null, main), true);
+    assert.deepEqual(focuses, ['main']);
+    assert.deepEqual(clicks, []);
+});
+
+test('an open composer inside an inert card cannot receive focus', () => {
+    const focuses: string[] = [];
+
+    assert.equal(press('r', null, card('deleted', [], [], true, focuses)), false);
+    assert.deepEqual(focuses, []);
+});
+
+test('a nested reply composer does not take the main commit shortcut', () => {
+    const focuses: string[] = [];
+    const reply = card('nested', [], [], false, focuses);
+    const main = card('main', [], []);
+
+    main.querySelectorAll = reply.querySelectorAll.bind(reply);
+
+    assert.equal(press('r', null, main), false);
+    assert.deepEqual(focuses, []);
 });

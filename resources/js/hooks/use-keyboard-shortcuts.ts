@@ -157,7 +157,12 @@ export function useKeyboardShortcuts(
 
             if (commitAction) {
                 event.preventDefault();
-                commitAction.click();
+
+                if (commitAction.tagName === 'TEXTAREA') {
+                    commitAction.focus();
+                } else {
+                    commitAction.click();
+                }
 
                 return;
             }
