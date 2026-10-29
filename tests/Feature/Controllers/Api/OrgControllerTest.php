@@ -39,7 +39,7 @@ it('refuses to start an org for a user in timeout, as the web does', function ()
     [$nuno] = followersOf($this->user, 1);
     UserTimeout::factory()->for($this->user)->create();
 
-    signedApiRequest($this->keyPair, 'POST', route('api-org.store'), ['name' => 'buy my course', 'members' => [$nuno->username]])
+    signedApiRequest($this->keyPair, 'POST', route('api-org.store'), ['name' => 'buy my course', 'members' => [$nuno->handle]])
         ->assertForbidden()
         ->assertJsonPath('code', 'timed_out');
 
