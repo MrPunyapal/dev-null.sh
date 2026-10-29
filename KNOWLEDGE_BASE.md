@@ -36,6 +36,7 @@ This file documents the platform's features, stack, and stories. Feature entries
   - [Notifications](#notifications)
   - [Emails from /dev/null](#emails-from-devnull)
   - [Remotes: direct messages](#remotes-direct-messages)
+  - [Remotes: calls](#remotes-calls)
   - [Orgs: group chats](#orgs-group-chats)
   - [Muting and blocking](#muting-and-blocking)
   - [Reporting commits](#reporting-commits)
@@ -394,6 +395,22 @@ Message requests and an **Everyone** contact option may not be available. Where 
 Sources: [Remotes setting](resources/js/components/remotes-setting.tsx), [contact policy](app/Models/User.php), [push access](app/Queries/PushAccessQuery.php), [reactions](app/Http/Controllers/MessageReactionController.php), [message validation](app/Http/Requests/CreateConversationMessageRequest.php), [message creation](app/Actions/CreateMessage.php), [link-preview storage](app/Models/LinkPreview.php), [voice notes](app/Services/VoiceNotes.php), [remote preferences](resources/js/components/chat/remote-settings-menu.tsx).
 
 Direct remotes disappear from the inbox when the other person deletes their account. An unnamed org can still show **Just you** when you are its only remaining member.
+
+### Remotes: calls
+
+In the web app, a direct remote that has already started can make a one-on-one **call** from the phone button next to Ping in its composer, on the Remotes page or in the dock. Calls work wherever a ping would: both people need Remotes on, no block, and a conversation someone has already said something in. Orgs can't be called yet, and the Mac and mobile apps can't make or answer calls yet.
+
+The call lives on top of that remote's composer: confirming, ringing, and then the call itself with its timer, mute, camera, and **Hang up**. Messages you send during a call are ordinary messages in the same remote. A call is between two people, so it ends for both as soon as either hangs up. Screen sharing is shown as coming soon.
+
+Calls are **relayed and encrypted**. The audio and video go through Cloudflare's relay (TURN), encrypted by the browsers (WebRTC) from one end to the other, so neither the relay nor /dev/null can hear or see a call. Because everything goes through the relay, **neither person ever sees the other's IP address**, only the relay's. Cloudflare's relay does see both people's IP addresses, that a call is happening, and for how long, but not what is said or shown. /dev/null only passes on the two short messages the browsers need to set up the call, held encrypted in a short-lived cache for as long as the call rings and then forgotten, and fetches short-lived relay credentials from Cloudflare for each call without storing them. Nothing about a call is saved: no call history, no recordings, and nothing in your export.
+
+Before calling, the composer asks you to confirm. An incoming call shows **Accept** and **Decline**: in that remote's composer when you have it open, and otherwise in a bar at the top of whatever page you're on, so you can answer from anywhere while /dev/null is open in a visible tab. From any page, the same bar lets you mute, turn the camera on or off, hang up, or jump back to the remote.
+
+Once connected, the call shows a short code such as `fp 3f9a c217`, made from both browsers' encryption keys. If you both read out the same code, nobody is listening in between, /dev/null included.
+
+The camera starts off; turning it on asks the browser for camera access and shows both of you side by side above the composer. A call rings for 45 seconds. It plays the ping sound unless that remote is muted or your sound is off. If the relay can't be reached, the call says **Couldn't connect the call**.
+
+Sources: [call flow](resources/js/lib/call.ts), [call console and bar](resources/js/components/chat/call.tsx), [who can call](app/Http/Requests/CreateConversationCallRequest.php), [call storage](app/Actions/CreateConversationCall.php), [relay](app/Services/TurnProviders/CloudflareTurnProvider.php).
 
 ### Orgs: group chats
 

@@ -9,6 +9,7 @@ use App\Http\Controllers\BanController;
 use App\Http\Controllers\BannedController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\BulkActivityController;
+use App\Http\Controllers\CallController;
 use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\Cli\ScriptController;
 use App\Http\Controllers\CommitApprovalController;
@@ -33,6 +34,8 @@ use App\Http\Controllers\CommitStarCountController;
 use App\Http\Controllers\CommitStatusController;
 use App\Http\Controllers\CommitTranslationController;
 use App\Http\Controllers\ConversationArchiveController;
+use App\Http\Controllers\ConversationCallController;
+use App\Http\Controllers\ConversationCallIceServerController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\ConversationDropController;
 use App\Http\Controllers\ConversationMergeController;
@@ -423,6 +426,13 @@ Route::middleware('auth')->group(function (): void {
             ->name('conversation-read.update');
         Route::put('remotes/@{partner:handle}/typing', [ConversationTypingController::class, 'update'])
             ->name('conversation-typing.update');
+        Route::get('remotes/call', [CallController::class, 'show'])->name('call.show');
+        Route::get('remotes/@{partner:handle}/call', [ConversationCallController::class, 'show'])
+            ->name('conversation-call.show');
+        Route::put('remotes/@{partner:handle}/call', [ConversationCallController::class, 'update'])
+            ->name('conversation-call.update');
+        Route::delete('remotes/@{partner:handle}/call', [ConversationCallController::class, 'destroy'])
+            ->name('conversation-call.destroy');
         Route::post('remotes/@{partner:handle}/merge', [ConversationMergeController::class, 'store'])
             ->name('conversation-merge.store');
         Route::post('remotes/@{partner:handle}/drop', [ConversationDropController::class, 'store'])
@@ -474,6 +484,12 @@ Route::middleware('auth')->group(function (): void {
     Route::post('remotes/@{partner:handle}/messages', [ConversationMessageController::class, 'store'])
         ->middleware([PreventPostingInTimeout::class, 'throttle:messages'])
         ->name('conversation-message.store');
+    Route::get('remotes/@{partner:handle}/call/ice-servers', [ConversationCallIceServerController::class, 'index'])
+        ->middleware('throttle:messages')
+        ->name('conversation-call-ice-server.index');
+    Route::post('remotes/@{partner:handle}/call', [ConversationCallController::class, 'store'])
+        ->middleware([PreventPostingInTimeout::class, 'throttle:messages'])
+        ->name('conversation-call.store');
     Route::post('remotes/@{partner:handle}/ping', [ConversationPingController::class, 'store'])
         ->middleware([PreventPostingInTimeout::class, 'throttle:pings'])
         ->name('conversation-ping.store');
