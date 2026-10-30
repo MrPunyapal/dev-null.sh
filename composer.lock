@@ -4166,16 +4166,16 @@
         },
         {
             "name": "phpstan/phpdoc-parser",
-            "version": "2.3.11",
+            "version": "2.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpdoc-parser.git",
-                "reference": "c9fb3e1560c6a33eca59c9a2fcb4d9925445a0a4"
+                "reference": "e3647094ed8f0f1f67393d812b793a5143e25af3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/c9fb3e1560c6a33eca59c9a2fcb4d9925445a0a4",
-                "reference": "c9fb3e1560c6a33eca59c9a2fcb4d9925445a0a4",
+                "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/e3647094ed8f0f1f67393d812b793a5143e25af3",
+                "reference": "e3647094ed8f0f1f67393d812b793a5143e25af3",
                 "shasum": ""
             },
             "require": {
@@ -4207,9 +4207,9 @@
             "description": "PHPDoc parser with support for nullable, intersection and generic types",
             "support": {
                 "issues": "https://github.com/phpstan/phpdoc-parser/issues",
-                "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.11"
+                "source": "https://github.com/phpstan/phpdoc-parser/tree/2.4.0"
             },
-            "time": "2026-10-28T10:46:50+00:00"
+            "time": "2026-10-28T20:28:58+00:00"
         },
         {
             "name": "psr/clock",
@@ -12558,11 +12558,11 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.3.3",
+            "version": "2.3.4",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/4b57dc8ca7456b635d1661845f44bc060b02c6b0",
-                "reference": "4b57dc8ca7456b635d1661845f44bc060b02c6b0",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/f20ce6f3c82556cfcfc086b152445a12d1d64fff",
+                "reference": "f20ce6f3c82556cfcfc086b152445a12d1d64fff",
                 "shasum": ""
             },
             "require": {
@@ -12618,7 +12618,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-27T14:06:26+00:00"
+            "time": "2026-10-28T22:38:53+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
