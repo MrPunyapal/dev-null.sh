@@ -390,3 +390,11 @@ function apiKeyPairFor(User $user): SshKeyPair
 
     return $keyPair;
 }
+
+/**
+ * Whether the database's pgvector predates `hnsw.iterative_scan` (0.8), as the one Herd ships locally does.
+ */
+function pgvectorLacksIterativeScan(): bool
+{
+    return version_compare((string) DB::scalar("select extversion from pg_extension where extname = 'vector'"), '0.8.0', '<');
+}
