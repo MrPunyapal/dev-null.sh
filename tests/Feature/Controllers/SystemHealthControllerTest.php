@@ -47,9 +47,8 @@ it('shows the operational health of the app to admins', function (): void {
             ->missing('githubRateLimit'));
 });
 
-it('shows the GitHub rate limit when GitHub is called as the OAuth app', function (): void {
+it('shows the GitHub rate limit', function (): void {
     $github = $this->mock(GitHubProvider::class);
-    $github->shouldReceive('isAuthenticated')->andReturnTrue();
     $github->shouldReceive('rateLimit')->andReturn(['remaining' => 4321, 'limit' => 5000, 'resets_at' => now()->addMinutes(30)->toImmutable()]);
 
     $response = $this->actingAs(User::factory()->create(['handle' => 'admin']))

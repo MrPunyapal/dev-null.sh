@@ -139,8 +139,14 @@ final readonly class OpenAIRelevanceProvider implements RelevanceProvider
 
     private function request(): PendingRequest
     {
-        return Http::baseUrl(config()->string('ai.providers.openai.url'))
-            ->withToken(config()->string('ai.providers.openai.key'))
+        $url = config('ai.providers.openai.url');
+        assert(is_string($url));
+
+        $key = config('ai.providers.openai.key');
+        assert(is_string($key));
+
+        return Http::baseUrl($url)
+            ->withToken($key)
             ->acceptJson()
             ->connectTimeout(3)
             ->timeout(15);

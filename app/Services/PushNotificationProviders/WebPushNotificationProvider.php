@@ -2,23 +2,37 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\PushNotificationProviders;
 
+use App\Contracts\Services\PushNotificationProvider;
 use App\Models\PushSubscription;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Minishlink\WebPush\ContentEncoding;
 use Minishlink\WebPush\VAPID;
 
-final readonly class RemotePush
+final readonly class WebPushNotificationProvider implements PushNotificationProvider
 {
+    public function publicKey(): string
+    {
+        $publicKey = config('services.web_push.public_key');
+        assert(is_string($publicKey));
+
+        return $publicKey;
+    }
+
     public function send(PushSubscription $subscription): bool
     {
+        $subject = config('services.web_push.subject');
+        assert(is_string($subject));
+
+        $privateKey = config('services.web_push.private_key');
+        assert(is_string($privateKey));
+
         $auth = VAPID::validate([
-            'subject' => Config::string('services.web_push.subject'),
-            'publicKey' => Config::string('services.web_push.public_key'),
-            'privateKey' => Config::string('services.web_push.private_key'),
+            'subject' => $subject,
+            'publicKey' => $this->publicKey(),
+            'privateKey' => $privateKey,
         ]);
         $endpoint = $subscription->endpoint;
         $headers = VAPID::getVapidHeaders(

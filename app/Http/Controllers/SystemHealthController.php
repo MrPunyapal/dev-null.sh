@@ -43,9 +43,7 @@ final readonly class SystemHealthController
             'moderation' => $moderation->get(...),
             'runtime' => $runtime->get(...),
             'hasTraffic' => $traffic->isConfigured(),
-            ...$githubRateLimit->isConfigured() ? [
-                'githubRateLimit' => Inertia::defer($githubRateLimit->get(...)),
-            ] : [],
+            'githubRateLimit' => Inertia::defer($githubRateLimit->get(...)),
         ]);
     }
 }

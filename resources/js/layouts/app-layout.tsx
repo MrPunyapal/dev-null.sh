@@ -162,7 +162,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 {auth.user !== null && auth.remotes !== null && !isMessages && (
                     <ChatDock user={auth.user} />
                 )}
-                {auth.user !== null && auth.remotes?.calls && (
+                {auth.user !== null && auth.remotes !== null && (
                     <>
                         <CallBar user={auth.user} />
                         <CallLeaveWarning />

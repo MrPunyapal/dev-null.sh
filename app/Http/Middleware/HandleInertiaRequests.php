@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Contracts\Services\TurnProvider;
 use App\Dto\ReaderClock;
 use App\Enums\Log;
 use App\Enums\RepliesPerPage;
@@ -105,7 +104,6 @@ final class HandleInertiaRequests extends Middleware
                     'pull_receipts' => $user->pull_receipts,
                     'requests' => (bool) config('remotes.requests'),
                     'everyone' => (bool) config('remotes.everyone'),
-                    'calls' => resolve(TurnProvider::class)->isAvailable(),
                 ] : null,
                 'pasteis' => fn (): ?array => $user?->pasteis_mode ? [
                     'remaining' => $user->pasteisRemaining(),

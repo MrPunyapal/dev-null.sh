@@ -28,11 +28,6 @@ final readonly class HttpGitHubProvider implements GitHubProvider
 {
     private const int PerPage = 100;
 
-    public function isAuthenticated(): bool
-    {
-        return filled(config('services.github.client_id')) && filled(config('services.github.client_secret'));
-    }
-
     /**
      * @return RateLimit
      */
@@ -192,8 +187,11 @@ final readonly class HttpGitHubProvider implements GitHubProvider
 
     public function createIssue(string $title, string $body, array $labels): array
     {
+        $repository = config('services.github.repository');
+        assert(is_string($repository));
+
         $issue = $this->request($this->installationToken())
-            ->post('repos/'.config()->string('services.github.repository').'/issues', [
+            ->post("repos/{$repository}/issues", [
                 'title' => $title,
                 'body' => $body,
                 'labels' => $labels,
@@ -252,12 +250,14 @@ final readonly class HttpGitHubProvider implements GitHubProvider
             return $request->withToken($token);
         }
 
-        // Authenticating as the OAuth app raises the rate limit from 60 to 5,000 requests per hour.
-        if ($this->isAuthenticated()) {
-            $request->withBasicAuth(config()->string('services.github.client_id'), config()->string('services.github.client_secret'));
-        }
+        $clientId = config('services.github.client_id');
+        assert(is_string($clientId));
 
-        return $request;
+        $clientSecret = config('services.github.client_secret');
+        assert(is_string($clientSecret));
+
+        // Authenticating as the OAuth app raises the rate limit from 60 to 5,000 requests per hour.
+        return $request->withBasicAuth($clientId, $clientSecret);
     }
 
     /**
@@ -325,7 +325,9 @@ final readonly class HttpGitHubProvider implements GitHubProvider
      */
     private function installationToken(): string
     {
-        $repository = config()->string('services.github.repository');
+        $repository = config('services.github.repository');
+        assert(is_string($repository));
+
         $token = Cache::get("github-app:{$repository}:installation-token");
 
         if (is_string($token)) {
@@ -360,10 +362,16 @@ final readonly class HttpGitHubProvider implements GitHubProvider
      */
     private function jwt(): string
     {
+        $appId = config('services.github_app.id');
+        assert(is_string($appId));
+
+        $privateKey = config('services.github_app.private_key');
+        assert(is_string($privateKey));
+
         return JWT::encode([
             'iat' => now()->subMinute()->getTimestamp(),
             'exp' => now()->addMinutes(9)->getTimestamp(),
-            'iss' => config()->string('services.github_app.id'),
-        ], str_replace('\n', "\n", config()->string('services.github_app.private_key')), 'RS256');
+            'iss' => $appId,
+        ], str_replace('\n', "\n", $privateKey), 'RS256');
     }
 }

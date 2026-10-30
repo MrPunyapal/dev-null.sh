@@ -16,16 +16,9 @@ final readonly class GitHubRateLimitQuery
     }
 
     /**
-     * GitHub is called as the OAuth app, the same way SSH keys are synced, so this is the limit those calls draw from.
-     */
-    public function isConfigured(): bool
-    {
-        return $this->github->isAuthenticated();
-    }
-
-    /**
-     * Reading the rate limit does not count against it. It is cached for a minute so polling does not call GitHub on
-     * every refresh, and a failed read is not cached, so the next refresh tries again.
+     * The limit the calls made as the OAuth app draw from, such as syncing SSH keys. Reading it does not count against
+     * it. It is cached for a minute so polling does not call GitHub on every refresh, and a failed read is not cached,
+     * so the next refresh tries again.
      *
      * @return array{remaining: int, limit: int, resets_at: string}|null
      */

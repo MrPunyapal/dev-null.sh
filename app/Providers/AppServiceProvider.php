@@ -8,6 +8,7 @@ use App\Contracts\Services\DnsResolver;
 use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
 use App\Contracts\Services\ModerationProvider;
+use App\Contracts\Services\PushNotificationProvider;
 use App\Contracts\Services\RelevanceProvider;
 use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
@@ -21,6 +22,8 @@ use App\Services\GitHubProviders\HttpGitHubProvider;
 use App\Services\GitHubProviders\NullGitHubProvider;
 use App\Services\ModerationProviders\NullModerationProvider;
 use App\Services\ModerationProviders\OpenAIModerationProvider;
+use App\Services\PushNotificationProviders\NullPushNotificationProvider;
+use App\Services\PushNotificationProviders\WebPushNotificationProvider;
 use App\Services\RelevanceProviders\NullRelevanceProvider;
 use App\Services\RelevanceProviders\OpenAIRelevanceProvider;
 use App\Services\TurnProviders\CloudflareTurnProvider;
@@ -46,6 +49,7 @@ final class AppServiceProvider extends ServiceProvider
         EmbeddingProvider::class => OpenAIEmbeddingProvider::class,
         GitHubProvider::class => HttpGitHubProvider::class,
         ModerationProvider::class => OpenAIModerationProvider::class,
+        PushNotificationProvider::class => WebPushNotificationProvider::class,
         RelevanceProvider::class => OpenAIRelevanceProvider::class,
         TurnProvider::class => CloudflareTurnProvider::class,
     ];
@@ -59,6 +63,7 @@ final class AppServiceProvider extends ServiceProvider
         EmbeddingProvider::class => NullEmbeddingProvider::class,
         GitHubProvider::class => NullGitHubProvider::class,
         ModerationProvider::class => NullModerationProvider::class,
+        PushNotificationProvider::class => NullPushNotificationProvider::class,
         RelevanceProvider::class => NullRelevanceProvider::class,
         TurnProvider::class => LocalTurnProvider::class,
     ];

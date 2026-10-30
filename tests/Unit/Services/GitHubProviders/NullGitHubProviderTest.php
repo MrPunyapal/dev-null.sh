@@ -14,8 +14,7 @@ it('knows nobody and holds nothing', function (): void {
     $provider = new NullGitHubProvider();
     $noResults = ['incomplete' => false, 'total' => 0, 'items' => []];
 
-    expect($provider->isAuthenticated())->toBeFalse()
-        ->and($provider->rateLimit())->toBeNull()
+    expect($provider->rateLimit())->toBeNull()
         ->and($provider->account('583231'))->toBeNull()
         ->and($provider->accountByLogin('octocat'))->toBeNull()
         ->and($provider->login('583231'))->toBeNull()

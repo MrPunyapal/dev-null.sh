@@ -14,6 +14,10 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+beforeEach(function (): void {
+    config(['services.github.client_id' => 'client-id', 'services.github.client_secret' => 'client-secret']);
+});
+
 it('is the github provider in production', function (): void {
     app()->detectEnvironment(fn (): string => 'production');
     app()->register(AppServiceProvider::class, force: true);
@@ -21,19 +25,7 @@ it('is the github provider in production', function (): void {
     expect(resolve(GitHubProvider::class))->toBeInstanceOf(HttpGitHubProvider::class);
 });
 
-it('is authenticated as the OAuth app only with both credentials', function (?string $clientId, ?string $clientSecret, bool $isAuthenticated): void {
-    config(['services.github.client_id' => $clientId, 'services.github.client_secret' => $clientSecret]);
-
-    expect(new HttpGitHubProvider()->isAuthenticated())->toBe($isAuthenticated);
-})->with([
-    [null, null, false],
-    ['client-id', null, false],
-    ['', 'client-secret', false],
-    ['client-id', 'client-secret', true],
-]);
-
-it('calls the API as the OAuth app when it can, and anonymously otherwise', function (?string $clientId, ?string $authorization): void {
-    config(['services.github.client_id' => $clientId, 'services.github.client_secret' => 'client-secret']);
+it('calls the API as the OAuth app', function (): void {
     Http::fake(['api.github.com/user/583231' => Http::response(['login' => 'octocat'])]);
 
     expect(new HttpGitHubProvider()->login('583231'))->toBe('octocat');
@@ -41,11 +33,8 @@ it('calls the API as the OAuth app when it can, and anonymously otherwise', func
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.github.com/user/583231'
         && $request->header('Accept') === ['application/vnd.github+json']
         && $request->header('X-GitHub-Api-Version') === ['2022-11-28']
-        && $request->header('Authorization') === ($authorization === null ? [] : [$authorization]));
-})->with([
-    'as the app' => ['client-id', 'Basic '.base64_encode('client-id:client-secret')],
-    'anonymously' => [null, null],
-]);
+        && $request->header('Authorization') === ['Basic '.base64_encode('client-id:client-secret')]);
+});
 
 it('reads the core rate limit', function (): void {
     $resetsAt = now()->addMinutes(30);

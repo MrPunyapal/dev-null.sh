@@ -6,13 +6,6 @@ use App\Contracts\Services\GitHubProvider;
 use App\Queries\GitHubRateLimitQuery;
 use Illuminate\Http\Client\ConnectionException;
 
-it('is only available when GitHub is called as the OAuth app', function (bool $isAuthenticated): void {
-    $github = $this->mock(GitHubProvider::class);
-    $github->shouldReceive('isAuthenticated')->andReturn($isAuthenticated);
-
-    expect(resolve(GitHubRateLimitQuery::class)->isConfigured())->toBe($isAuthenticated);
-})->with([true, false]);
-
 it('reads the rate limit, and caches it for a minute', function (): void {
     $resetsAt = now()->addMinutes(30)->toImmutable();
     $github = $this->mock(GitHubProvider::class);

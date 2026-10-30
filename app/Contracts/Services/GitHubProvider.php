@@ -21,11 +21,6 @@ use Carbon\CarbonImmutable;
 interface GitHubProvider
 {
     /**
-     * Whether GitHub is called as the OAuth app, which raises the rate limit from 60 to 5,000 requests per hour.
-     */
-    public function isAuthenticated(): bool;
-
-    /**
      * The requests left out of the hourly budget the calls without a user's token draw from. Reading it costs none.
      *
      * @return RateLimit|null

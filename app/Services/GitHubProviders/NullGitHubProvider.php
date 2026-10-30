@@ -12,11 +12,6 @@ use App\Enums\GitHubOrganizationMembership;
  */
 final readonly class NullGitHubProvider implements GitHubProvider
 {
-    public function isAuthenticated(): bool
-    {
-        return false;
-    }
-
     public function rateLimit(): ?array
     {
         return null;
@@ -84,7 +79,10 @@ final readonly class NullGitHubProvider implements GitHubProvider
 
     public function createIssue(string $title, string $body, array $labels): array
     {
-        return ['number' => 0, 'url' => 'https://github.com/'.config()->string('services.github.repository').'/issues'];
+        $repository = config('services.github.repository');
+        assert(is_string($repository));
+
+        return ['number' => 0, 'url' => "https://github.com/{$repository}/issues"];
     }
 
     public function searchIssues(string $query, int $perPage, ?string $sort): array
