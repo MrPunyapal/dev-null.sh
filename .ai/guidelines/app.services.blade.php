@@ -1,8 +1,8 @@
 # App/Services guidelines
 
 - Every third-party service the app reaches over the network (a relay, an AI provider, a mailer, a payment or streaming platform) sits behind a contract, so swapping vendor changes one class.
-- The contract is an interface in `app/Contracts/Services`, named after the role it plays, never the vendor: `TurnProvider`, `DnsResolver`.
-- Each implementation lives in `app/Services/{Role}s/` and is named vendor + role: `app/Services/TurnProviders/CloudflareTurnProvider.php`, `app/Services/DnsResolvers/SystemDnsResolver.php`.
+- The contract is an interface in `app/Contracts/Services`, named after the role it plays, never the vendor: `TurnProvider`, `AnalyticsProvider`.
+- Each implementation lives in `app/Services/{Role}s/` and is named vendor + role: `app/Services/TurnProviders/CloudflareTurnProvider.php`, `app/Services/AnalyticsProviders/FathomAnalyticsProvider.php`.
 - Add the contract to both arrays in `AppServiceProvider`: `PRODUCTION_SERVICES` with the real implementation, and `LOCAL_SERVICES` with a local one that needs no account, credentials or network: `Local{Role}` when it still does the job another way (`LocalTurnProvider` connects browsers directly), `Null{Role}` when it answers nothing (`NullModerationProvider` flags nothing). The local and testing environments bind only `LOCAL_SERVICES`, every other environment only `PRODUCTION_SERVICES`, so a contract missing from either has no binding there. Tests of the real implementation create it themselves and fake its HTTP calls.
 - Everything else depends on the contract, never on the implementation: inject it into constructors, controller methods and form request `authorize()`, or `resolve(TurnProvider::class)` where nothing can be injected.
 - The contract speaks the app's language, never the vendor's: methods and shapes the feature needs (`iceServers()`, `isRelayOnly()`), with a `@phpstan-type` for any shape it returns. Vendor URLs, payloads and credentials stay inside the implementation.

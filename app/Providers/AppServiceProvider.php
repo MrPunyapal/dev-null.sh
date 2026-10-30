@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\Services\AnalyticsProvider;
-use App\Contracts\Services\DnsResolver;
 use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
+use App\Contracts\Services\LinkPreviewProvider;
 use App\Contracts\Services\ModerationProvider;
 use App\Contracts\Services\PushNotificationProvider;
 use App\Contracts\Services\RelevanceProvider;
@@ -18,11 +18,12 @@ use App\Models\User;
 use App\Services\AnalyticsProviders\FathomAnalyticsProvider;
 use App\Services\AnalyticsProviders\NullAnalyticsProvider;
 use App\Services\CodeTheme;
-use App\Services\DnsResolvers\SystemDnsResolver;
 use App\Services\EmbeddingProviders\NullEmbeddingProvider;
 use App\Services\EmbeddingProviders\OpenAIEmbeddingProvider;
 use App\Services\GitHubProviders\HttpGitHubProvider;
 use App\Services\GitHubProviders\NullGitHubProvider;
+use App\Services\LinkPreviewProviders\HttpLinkPreviewProvider;
+use App\Services\LinkPreviewProviders\NullLinkPreviewProvider;
 use App\Services\ModerationProviders\NullModerationProvider;
 use App\Services\ModerationProviders\OpenAIModerationProvider;
 use App\Services\PushNotificationProviders\NullPushNotificationProvider;
@@ -52,6 +53,7 @@ final class AppServiceProvider extends ServiceProvider
         AnalyticsProvider::class => FathomAnalyticsProvider::class,
         EmbeddingProvider::class => OpenAIEmbeddingProvider::class,
         GitHubProvider::class => HttpGitHubProvider::class,
+        LinkPreviewProvider::class => HttpLinkPreviewProvider::class,
         ModerationProvider::class => OpenAIModerationProvider::class,
         PushNotificationProvider::class => WebPushNotificationProvider::class,
         RelevanceProvider::class => OpenAIRelevanceProvider::class,
@@ -67,6 +69,7 @@ final class AppServiceProvider extends ServiceProvider
         AnalyticsProvider::class => NullAnalyticsProvider::class,
         EmbeddingProvider::class => NullEmbeddingProvider::class,
         GitHubProvider::class => NullGitHubProvider::class,
+        LinkPreviewProvider::class => NullLinkPreviewProvider::class,
         ModerationProvider::class => NullModerationProvider::class,
         PushNotificationProvider::class => NullPushNotificationProvider::class,
         RelevanceProvider::class => NullRelevanceProvider::class,
@@ -75,8 +78,6 @@ final class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        $this->app->bind(DnsResolver::class, SystemDnsResolver::class);
-
         $services = $this->app->environment('local', 'testing')
             ? self::LOCAL_SERVICES
             : self::PRODUCTION_SERVICES;
