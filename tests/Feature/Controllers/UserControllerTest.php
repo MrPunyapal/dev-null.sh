@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\GitHubProvider;
 use App\Enums\Log;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Commit;
 use App\Models\LinkPreview;
 use App\Models\Profile;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
@@ -734,10 +735,9 @@ it('shows the github profile readme on the readme tab, without looking for commi
     $user = User::factory()->create(['handle' => 'octocat']);
     Commit::factory()->for($user)->create();
 
-    Http::fake([
-        "api.github.com/user/{$user->github_id}" => Http::response(['login' => 'octocat']),
-        'api.github.com/repos/octocat/octocat/readme' => Http::response('<div id="readme"><article class="markdown-body"><h2>Hi there</h2></article></div>'),
-    ]);
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldReceive('login')->with($user->github_id)->andReturn('octocat');
+    $github->shouldReceive('readme')->with('octocat')->andReturn('<div id="readme"><article class="markdown-body"><h2>Hi there</h2></article></div>');
 
     $this->get(route('user.show', ['user' => $user, 'tab' => 'readme']))->assertOk()->assertInertia(fn ($page) => $page
         ->where('tab', 'readme')
@@ -749,14 +749,17 @@ it('shows the github profile readme on the readme tab, without looking for commi
 it('tells the readme tab when github did not answer', function (): void {
     $user = User::factory()->create(['handle' => 'octocat']);
 
-    Http::fake(["api.github.com/user/{$user->github_id}" => Http::response(status: 502)]);
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldReceive('login')->andThrow(new ConnectionException('timed out'));
 
     $this->get(route('user.show', ['user' => $user, 'tab' => 'readme']))->assertOk()->assertInertia(fn ($page) => $page
         ->where('readme', false));
 });
 
 it('does not ask github for the readme on the other tabs', function (string $tab): void {
-    Http::preventStrayRequests();
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldNotReceive('login', 'readme');
+
     $user = User::factory()->create(['handle' => 'octocat']);
 
     $this->get(route('user.show', ['user' => $user, 'tab' => $tab]))->assertOk()->assertInertia(fn ($page) => $page

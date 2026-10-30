@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\GitHubProvider;
+use App\Enums\GitHubOrganizationMembership;
 use App\Models\Profile;
 use App\Models\User;
-use Illuminate\Http\Client\Request;
+use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
-use Laravel\Socialite\Two\GithubProvider;
+use Laravel\Socialite\Two\GithubProvider as GitHubOAuthProvider;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as GitHubUser;
 
@@ -18,27 +20,11 @@ use Laravel\Socialite\Two\User as GitHubUser;
  */
 function fakeClaimingGitHubAccount(string $id): void
 {
-    $provider = Mockery::mock(GithubProvider::class);
+    $provider = Mockery::mock(GitHubOAuthProvider::class);
     $provider->shouldReceive('redirectUrl')->with(route('organization-admin.store'))->andReturnSelf();
     $provider->shouldReceive('user')->andReturn(GitHubUser::fake(['id' => $id, 'nickname' => 'octocat', 'token' => 'claim-token']));
 
     Socialite::shouldReceive('driver')->with('github')->andReturn($provider);
-}
-
-/**
- * @param  array<string, mixed>  $membership
- * @param  array<string, string>  $headers
- */
-function fakeGitHubMembership(array $membership = [], int $status = 200, array $headers = []): void
-{
-    Http::fake([
-        'api.github.com/user/memberships/orgs/brefphp' => Http::response([
-            'state' => 'active',
-            'role' => 'member',
-            'organization' => ['id' => 45861341],
-            ...$membership,
-        ], $status, $headers),
-    ]);
 }
 
 /**
@@ -97,9 +83,9 @@ it('asks guests to sign in first', function (): void {
     $this->post(route('organization-admin.create', Profile::factory()->organization()->create()))->assertRedirect(route('home'));
 });
 
-it('makes a member of the organization on github an admin of its page', function (string $role): void {
+it('makes a member of the organization on github an admin of its page', function (): void {
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership(['role' => $role]);
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->with('claim-token', 'brefphp', '45861341')->andReturn(GitHubOrganizationMembership::Member);
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->actingAs($user)
@@ -110,8 +96,7 @@ it('makes a member of the organization on github an admin of its page', function
         ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'You are now an admin of @brefphp.']);
 
     expect($organization->admins()->pluck('users.id')->all())->toBe([$user->id]);
-    Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer claim-token'));
-})->with(['admin', 'member']);
+});
 
 it('does not send anyone to github for a page someone already claimed', function (): void {
     [$user, $organization] = claimingUserAndOrganization();
@@ -126,7 +111,7 @@ it('does not send anyone to github for a page someone already claimed', function
 
 it('refuses a claim when someone else claimed the page while the user was on github', function (): void {
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership();
+    $this->mock(GitHubProvider::class)->shouldNotReceive('organizationMembership');
     [$user, $organization] = claimingUserAndOrganization();
     $first = User::factory()->create();
     $second = User::factory()->create();
@@ -143,18 +128,17 @@ it('refuses a claim when someone else claimed the page while the user was on git
         ->assertInertiaFlash('claimFailed.message', "@brefphp was already claimed by @{$first->handle}.");
 
     expect($organization->admins()->pluck('users.id')->sort()->values()->all())->toBe(collect([$first->id, $second->id])->sort()->values()->all());
-    Http::assertNothingSent();
 });
 
 it('refuses a member who loses the claim to another coming back from github at the same moment', function (): void {
     fakeClaimingGitHubAccount('720328');
     [$user, $organization] = claimingUserAndOrganization();
     $other = User::factory()->create();
-    Http::fake(['api.github.com/user/memberships/orgs/brefphp' => function () use ($organization, $other) {
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->andReturnUsing(function () use ($organization, $other): GitHubOrganizationMembership {
         $organization->admins()->attach($other);
 
-        return Http::response(['state' => 'active', 'role' => 'member', 'organization' => ['id' => 45861341]]);
-    }]);
+        return GitHubOrganizationMembership::Member;
+    });
 
     $this->actingAs($user)
         ->withSession(['claiming-organization' => $organization->id])
@@ -166,9 +150,9 @@ it('refuses a member who loses the claim to another coming back from github at t
     expect($organization->admins()->pluck('users.id')->all())->toBe([$other->id]);
 });
 
-it('refuses users github does not say are members', function (array $membership, int $status): void {
+it('refuses users github does not say are members', function (): void {
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership($membership, $status);
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->with('claim-token', 'brefphp', '45861341')->andReturn(GitHubOrganizationMembership::NotMember);
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->actingAs($user)
@@ -179,17 +163,12 @@ it('refuses users github does not say are members', function (array $membership,
         ->assertInertiaFlash('claimFailed', ['message' => 'GitHub says you are not a member of @brefphp.', 'approvalUrl' => null]);
 
     expect($organization->admins()->exists())->toBeFalse();
-})->with([
-    'not a member' => [['message' => 'Not Found'], 404],
-    'invited only' => [['state' => 'pending'], 200],
-    'a billing manager' => [['role' => 'billing_manager'], 200],
-    'of another organization since renamed' => [['organization' => ['id' => 1]], 200],
-]);
+});
 
 it('says where to approve /dev/null when the organization hides its members from it', function (): void {
     config(['services.github.client_id' => 'client-id']);
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership(['message' => 'Although you appear to have the correct authorization credentials, the `brefphp` organization has enabled OAuth App access restrictions.'], 403);
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->with('claim-token', 'brefphp', '45861341')->andReturn(GitHubOrganizationMembership::Restricted);
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->actingAs($user)
@@ -203,7 +182,7 @@ it('says where to approve /dev/null when the organization hides its members from
 
 it('says where to sign in when the organization uses single sign-on', function (): void {
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership(['message' => 'Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.'], 403, ['X-GitHub-SSO' => 'required; url=https://github.com/orgs/brefphp/sso?authorization_request=abc']);
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->with('claim-token', 'brefphp', '45861341')->andReturn(GitHubOrganizationMembership::SingleSignOn);
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->actingAs($user)
@@ -218,23 +197,20 @@ it('says where to sign in when the organization uses single sign-on', function (
     expect($organization->admins()->exists())->toBeFalse();
 });
 
-it('fails loudly when github fails', function (array $membership, int $status): void {
+it('fails loudly when github fails', function (): void {
     fakeClaimingGitHubAccount('720328');
-    fakeGitHubMembership($membership, $status);
+    $this->mock(GitHubProvider::class)->shouldReceive('organizationMembership')->andThrow(new RequestException(new Response(new Psr7Response(502))));
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->withoutExceptionHandling()
         ->actingAs($user)
         ->withSession(['claiming-organization' => $organization->id])
         ->get(route('organization-admin.store'));
-})->with([
-    'down' => [[], 502],
-    'rate limited' => [['message' => 'API rate limit exceeded for user ID 720328.'], 403],
-])->throws(RequestException::class);
+})->throws(RequestException::class);
 
 it('refuses a github account other than the one the user signed in with', function (): void {
-    Http::fake();
     fakeClaimingGitHubAccount('583231');
+    $this->mock(GitHubProvider::class)->shouldNotReceive('organizationMembership');
     [$user, $organization] = claimingUserAndOrganization();
 
     $this->actingAs($user)
@@ -244,7 +220,6 @@ it('refuses a github account other than the one the user signed in with', functi
         ->assertInertiaFlash('claimFailed.message', "GitHub is signed in as @octocat. Sign in there as @{$user->profile->handle} to claim this page.");
 
     expect($organization->admins()->exists())->toBeFalse();
-    Http::assertNothingSent();
 });
 
 it('fails when the user denies access on github', function (): void {
@@ -258,7 +233,7 @@ it('fails when the user denies access on github', function (): void {
 });
 
 it('fails when the state does not match', function (): void {
-    $provider = Mockery::mock(GithubProvider::class);
+    $provider = Mockery::mock(GitHubOAuthProvider::class);
     $provider->shouldReceive('redirectUrl')->andReturnSelf();
     $provider->shouldReceive('user')->andThrow(new InvalidStateException);
     Socialite::shouldReceive('driver')->with('github')->andReturn($provider);

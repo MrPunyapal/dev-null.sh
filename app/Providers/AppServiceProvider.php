@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\Services\DnsResolver;
+use App\Contracts\Services\GitHubProvider;
 use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Services\CodeTheme;
 use App\Services\DnsResolvers\SystemDnsResolver;
+use App\Services\GitHubProviders\HttpGitHubProvider;
+use App\Services\GitHubProviders\NullGitHubProvider;
 use App\Services\TurnProviders\CloudflareTurnProvider;
 use App\Services\TurnProviders\LocalTurnProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -31,6 +34,7 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array PRODUCTION_SERVICES = [
+        GitHubProvider::class => HttpGitHubProvider::class,
         TurnProvider::class => CloudflareTurnProvider::class,
     ];
 
@@ -40,6 +44,7 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array LOCAL_SERVICES = [
+        GitHubProvider::class => NullGitHubProvider::class,
         TurnProvider::class => LocalTurnProvider::class,
     ];
 

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Dto\SshPublicKey;
 use App\Jobs\UnfurlLink;
 use App\Models\Device;
 use App\Models\Message;
@@ -11,9 +10,7 @@ use App\Services\OpenAI;
 use App\Services\SignedCommits;
 use App\Services\SignedRequests;
 use Carbon\CarbonInterface;
-use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -123,97 +120,11 @@ function fakeSearch(array $verdicts = []): void
 }
 
 /**
- * @param  array<string, mixed>  $account
- */
-function fakeGitHubAccount(User $user, array $account = []): void
-{
-    $account = [
-        'id' => (int) $user->github_id,
-        'login' => 'octocat',
-        'name' => 'The Octocat',
-        'email' => 'octocat@github.com',
-        'avatar_url' => 'https://avatars.githubusercontent.com/u/583231?v=4',
-        'bio' => 'I am the Octocat.',
-        'company' => '@github',
-        'location' => 'San Francisco',
-        'blog' => 'https://github.blog',
-        ...$account,
-    ];
-
-    Http::fake([
-        "api.github.com/user/{$user->github_id}" => Http::response($account),
-    ]);
-
-    fakeGitHubSshKeys($user, handle: $account['login']);
-}
-
-/**
  * @return array<string, mixed>
  */
 function gitHubContributor(string $login, int $commits, string $type = 'User', ?int $id = null): array
 {
     return ['login' => $login, 'id' => $id ?? crc32($login), 'contributions' => $commits, 'type' => $type];
-}
-
-/**
- * Serves the contributors of the repository like GitHub does: most commits first, a page at a time.
- *
- * @param  list<array<string, mixed>>  $contributors
- */
-function fakeGitHubContributors(array $contributors): void
-{
-    Http::fake(['api.github.com/repos/'.config()->string('services.github.repository').'/contributors*' => function (Request $request) use ($contributors): PromiseInterface {
-        $perPage = (int) $request['per_page'];
-
-        return Http::response(array_slice($contributors, ((int) $request['page'] - 1) * $perPage, $perPage));
-    }]);
-}
-
-/**
- * @param  list<SshPublicKey>  $keys
- * @param  list<SshPublicKey>  $signingKeys
- */
-function fakeGitHubSshKeys(User $user, array $keys = [], array $signingKeys = [], ?string $handle = null): void
-{
-    $handle ??= $user->handle;
-
-    $toResponse = fn (array $publicKeys): array => array_map(
-        fn (SshPublicKey $publicKey): array => ['id' => 1, 'key' => $publicKey->toOpenSsh()],
-        $publicKeys,
-    );
-
-    Http::fake([
-        "api.github.com/user/{$user->github_id}" => Http::response(['login' => $handle]),
-        "api.github.com/users/{$handle}/keys*" => Http::response($toResponse($keys)),
-        "api.github.com/users/{$handle}/ssh_signing_keys*" => Http::response($toResponse($signingKeys)),
-    ]);
-}
-
-/**
- * @param  list<User>  $following
- * @param  list<User>  $followers
- */
-function fakeGitHubFollows(User $user, array $following = [], array $followers = []): void
-{
-    $toResponse = fn (array $users): array => array_map(
-        fn (User $user): array => ['id' => (int) $user->github_id, 'login' => $user->handle],
-        $users,
-    );
-
-    Http::fake([
-        "api.github.com/user/{$user->github_id}" => Http::response(['login' => $user->handle]),
-        "api.github.com/users/{$user->handle}/following*" => Http::response($toResponse($following)),
-        "api.github.com/users/{$user->handle}/followers*" => Http::response($toResponse($followers)),
-    ]);
-}
-
-function fakeGitHubSponsorsListing(bool $hasSponsorsListing = false): void
-{
-    Http::fake([
-        'api.github.com/graphql' => Http::response(['data' => ['viewer' => [
-            'hasSponsorsListing' => $hasSponsorsListing,
-        ]]]),
-    ]);
 }
 
 /**

@@ -7,6 +7,7 @@ use App\Actions\CreateTomReply;
 use App\Ai\Agents\Tom;
 use App\Ai\Tools\SearchCommits;
 use App\Ai\Tools\SearchKnowledgeBase;
+use App\Contracts\Services\GitHubProvider;
 use App\Enums\CommitStatus;
 use App\Enums\Feature;
 use App\Jobs\EmbedCommit;
@@ -71,19 +72,20 @@ it('forces the selected tools before Tom answers and supports a bounded follow-u
         'api.openai.com/v1/decisions' => Http::sequence()->push(['answers' => collect($calls)->take(5)->map(fn (array $call): array => [
             'name' => $call['name'], 'type' => 'predicate', 'probability' => 1,
         ])->all()])->push(relevanceResponse([true])),
-        'api.github.com/repos/dev-null-sh/dev-null.sh/languages' => Http::response(['PHP' => 123]),
-        'api.github.com/search/issues*' => Http::response(['incomplete_results' => false, 'items' => []]),
-        'api.github.com/search/commits*' => Http::sequence()->push(['incomplete_results' => false, 'items' => [[
-            'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/abc',
-            'author' => ['login' => 'alice', 'id' => 123], 'committer' => ['login' => 'not-the-author'],
-            'commit' => ['message' => "feat: database search\n\nsecret trailer", 'author' => ['email' => 'secret@example.com', 'date' => '2025-01-01T00:00:00Z']],
-        ]]])->push(['incomplete_results' => false, 'items' => [[
-            'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/def',
-            'author' => ['login' => 'bob', 'id' => 456],
-            'commit' => ['message' => 'feat: semantic search', 'author' => ['date' => '2024-01-01T00:00:00Z']],
-        ]]]),
         'opencode.ai/zen/v1/chat/completions' => $responses,
     ]);
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldReceive('languages')->andReturn(['PHP' => 123]);
+    $github->shouldReceive('searchIssues')->andReturn(['incomplete' => false, 'total' => 0, 'items' => []]);
+    $github->shouldReceive('searchCommits')->andReturn(['incomplete' => false, 'total' => 1, 'items' => [[
+        'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/abc',
+        'author' => ['login' => 'alice', 'id' => 123], 'committer' => ['login' => 'not-the-author'],
+        'commit' => ['message' => "feat: database search\n\nsecret trailer", 'author' => ['email' => 'secret@example.com', 'date' => '2025-01-01T00:00:00Z']],
+    ]]], ['incomplete' => false, 'total' => 1, 'items' => [[
+        'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/def',
+        'author' => ['login' => 'bob', 'id' => 456],
+        'commit' => ['message' => 'feat: semantic search', 'author' => ['date' => '2024-01-01T00:00:00Z']],
+    ]]]);
 
     resolve(CreateTomReply::class)->handle($question->id);
 
@@ -165,14 +167,15 @@ it('retains all three search sources through retries and removes only spent tool
 
     Http::fake([
         'api.openai.com/v1/decisions' => $decisions,
-        'api.github.com/search/issues*' => Http::response(['incomplete_results' => false, 'items' => []]),
-        'api.github.com/search/commits*' => Http::response(['incomplete_results' => false, 'items' => [[
-            'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/abc',
-            'author' => ['login' => 'alice', 'id' => 123],
-            'commit' => ['message' => 'feat: introduce badges', 'author' => ['date' => '2026-10-20T00:00:00Z']],
-        ]]]),
         'opencode.ai/zen/v1/chat/completions' => $responses,
     ]);
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldReceive('searchIssues')->andReturn(['incomplete' => false, 'total' => 0, 'items' => []]);
+    $github->shouldReceive('searchCommits')->andReturn(['incomplete' => false, 'total' => 1, 'items' => [[
+        'html_url' => 'https://github.com/dev-null-sh/dev-null.sh/commit/abc',
+        'author' => ['login' => 'alice', 'id' => 123],
+        'commit' => ['message' => 'feat: introduce badges', 'author' => ['date' => '2026-10-20T00:00:00Z']],
+    ]]]);
 
     resolve(CreateTomReply::class)->handle($question->id);
 
@@ -261,6 +264,8 @@ it('uses public thread context for the decision and falls back to chat when no t
             'choices' => [['finish_reason' => 'stop', 'message' => ['role' => 'assistant', 'content' => 'You are welcome. :-)']]],
         ]),
     ]);
+    $github = $this->mock(GitHubProvider::class);
+    $github->shouldNotReceive('contributors', 'repository', 'languages', 'searchIssues', 'searchCommits', 'closedPullRequests');
 
     resolve(CreateTomReply::class)->handle($question->id);
 
@@ -279,7 +284,7 @@ it('uses public thread context for the decision and falls back to chat when no t
     });
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://opencode.ai/zen/v1/chat/completions'
         && empty($request['tools']));
-    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'api.github.com') || str_contains($request->url(), '/embeddings'));
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/embeddings'));
 });
 
 it('retries skipped tools at most twice and never publishes an incomplete reply', function (int $skippedAttempts): void {

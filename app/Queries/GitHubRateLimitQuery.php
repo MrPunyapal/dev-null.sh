@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace App\Queries;
 
-use Carbon\CarbonImmutable;
+use App\Contracts\Services\GitHubProvider;
 use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 
 final readonly class GitHubRateLimitQuery
 {
+    public function __construct(private GitHubProvider $github)
+    {
+        //
+    }
+
     /**
      * GitHub is called as the OAuth app, the same way SSH keys are synced, so this is the limit those calls draw from.
      */
     public function isConfigured(): bool
     {
-        return filled(config('services.github.client_id')) && filled(config('services.github.client_secret'));
+        return $this->github->isAuthenticated();
     }
 
     /**
@@ -30,28 +34,12 @@ final readonly class GitHubRateLimitQuery
         /** @var array{remaining: int, limit: int, resets_at: string}|null */
         return Cache::remember('operations:github-rate-limit', 60, function (): ?array {
             try {
-                $core = Http::baseUrl('https://api.github.com')
-                    ->accept('application/vnd.github+json')
-                    ->withHeaders(['X-GitHub-Api-Version' => '2022-11-28'])
-                    ->withBasicAuth(config()->string('services.github.client_id'), config()->string('services.github.client_secret'))
-                    ->connectTimeout(3)
-                    ->timeout(5)
-                    ->get('rate_limit')
-                    ->throw()
-                    ->json('resources.core');
+                $rateLimit = $this->github->rateLimit();
             } catch (HttpClientException) {
                 return null;
             }
 
-            if (! is_array($core) || ! is_int($core['remaining'] ?? null) || ! is_int($core['limit'] ?? null) || ! is_int($core['reset'] ?? null)) {
-                return null;
-            }
-
-            return [
-                'remaining' => $core['remaining'],
-                'limit' => $core['limit'],
-                'resets_at' => CarbonImmutable::createFromTimestamp($core['reset'])->toIso8601String(),
-            ];
+            return $rateLimit === null ? null : [...$rateLimit, 'resets_at' => $rateLimit['resets_at']->toIso8601String()];
         });
     }
 }

@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\CreateOrganizationAdmin;
+use App\Contracts\Services\GitHubProvider;
 use App\Enums\GitHubOrganizationMembership;
 use App\Enums\ProfileType;
 use App\Http\Requests\CreateOrganizationAdminRequest;
 use App\Models\Profile;
 use App\Models\User;
-use App\Services\GitHub;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Laravel\Socialite\Socialite;
-use Laravel\Socialite\Two\GithubProvider;
+use Laravel\Socialite\Two\GithubProvider as GitHubOAuthProvider;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Two\User as GitHubUser;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -48,7 +48,7 @@ final readonly class OrganizationAdminController
     /**
      * GitHub only sends back to a path under the callback registered for sign-in, so this is where it lands.
      */
-    public function store(Request $request, #[CurrentUser] User $user, GitHub $github, CreateOrganizationAdmin $action): RedirectResponse
+    public function store(Request $request, #[CurrentUser] User $user, GitHubProvider $github, CreateOrganizationAdmin $action): RedirectResponse
     {
         $organization = Profile::query()
             ->where('type', ProfileType::Organization)
@@ -121,10 +121,10 @@ final readonly class OrganizationAdminController
     /**
      * GitHub sends the user back here rather than to sign-in, and checks the token is redeemed for the same URL.
      */
-    private function github(): GithubProvider
+    private function github(): GitHubOAuthProvider
     {
         $provider = Socialite::driver('github');
-        assert($provider instanceof GithubProvider);
+        assert($provider instanceof GitHubOAuthProvider);
 
         return $provider->redirectUrl(route('organization-admin.store'));
     }
