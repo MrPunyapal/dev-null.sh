@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\Services\AnalyticsProvider;
+use App\Contracts\Services\EmailDraftProvider;
 use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
 use App\Contracts\Services\LinkPreviewProvider;
@@ -20,6 +21,8 @@ use App\Models\User;
 use App\Services\AnalyticsProviders\FathomAnalyticsProvider;
 use App\Services\AnalyticsProviders\NullAnalyticsProvider;
 use App\Services\CodeTheme;
+use App\Services\EmailDraftProviders\NullEmailDraftProvider;
+use App\Services\EmailDraftProviders\OpenCodeEmailDraftProvider;
 use App\Services\EmbeddingProviders\NullEmbeddingProvider;
 use App\Services\EmbeddingProviders\OpenAIEmbeddingProvider;
 use App\Services\GitHubProviders\HttpGitHubProvider;
@@ -57,6 +60,7 @@ final class AppServiceProvider extends ServiceProvider
      */
     private const array PRODUCTION_SERVICES = [
         AnalyticsProvider::class => FathomAnalyticsProvider::class,
+        EmailDraftProvider::class => OpenCodeEmailDraftProvider::class,
         EmbeddingProvider::class => OpenAIEmbeddingProvider::class,
         GitHubProvider::class => HttpGitHubProvider::class,
         LinkPreviewProvider::class => HttpLinkPreviewProvider::class,
@@ -75,6 +79,7 @@ final class AppServiceProvider extends ServiceProvider
      */
     private const array LOCAL_SERVICES = [
         AnalyticsProvider::class => NullAnalyticsProvider::class,
+        EmailDraftProvider::class => NullEmailDraftProvider::class,
         EmbeddingProvider::class => NullEmbeddingProvider::class,
         GitHubProvider::class => NullGitHubProvider::class,
         LinkPreviewProvider::class => NullLinkPreviewProvider::class,

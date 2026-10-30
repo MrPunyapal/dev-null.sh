@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Ai\Agents\EmailWriter;
+use App\Contracts\Services\EmailDraftProvider;
 use App\Contracts\Services\GitHubProvider;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
@@ -27,50 +27,46 @@ function emailDraftPullRequests(array $pullRequests): array
     ], $pullRequests);
 }
 
-it('drafts an email from what was merged in the time it looks back over', function (string $draft, array $included, array $excluded): void {
+it('drafts an email from what was merged in the time it looks back over', function (string $draft, int $days, array $merged): void {
     $this->mock(GitHubProvider::class)->shouldReceive('closedPullRequests')->with('dev-null-sh/dev-null.sh', 'production', Mockery::any(), Mockery::any())->andReturn(emailDraftPullRequests([
         ['number' => 3, 'title' => 'feat: email everyone', 'merged_at' => '2026-10-23T10:00:00Z'],
         ['number' => 2, 'title' => 'docs: closed without merging', 'merged_at' => null],
         ['number' => 1, 'title' => 'fix: older fix', 'merged_at' => '2026-10-10T10:00:00Z'],
     ]));
-    EmailWriter::fake([['subject' => 'What shipped', 'body' => "## New\n\n- Emails"]])->preventStrayPrompts();
+    $this->mock(EmailDraftProvider::class)->shouldReceive('draft')->once()
+        ->withArgs(fn (int $lookBack, array $pullRequests): bool => $lookBack === $days && array_column($pullRequests, 'number') === $merged)
+        ->andReturn(['subject' => 'What shipped', 'body' => "## New\n\n- Emails"]);
 
     $this->actingAs(User::factory()->create(['handle' => 'admin']))
         ->postJson(route('email-draft.store'), ['draft' => $draft])
         ->assertOk()
         ->assertExactJson(['subject' => 'What shipped', 'body' => "## New\n\n- Emails"]);
-
-    EmailWriter::assertPrompted(fn ($prompt): bool => collect($included)->every(fn (string $line): bool => str_contains($prompt->prompt, $line))
-        && collect($excluded)->every(fn (string $line): bool => ! str_contains($prompt->prompt, $line)));
 })->with([
-    'weekly' => ['weekly', ['- [feat] Email everyone (#3, https://github.com/dev-null-sh/dev-null.sh/pull/3) by octocat'], ['Older fix', 'Closed without merging']],
-    'monthly' => ['monthly', ['Email everyone', '- [fix] Older fix (#1'], ['Closed without merging']],
+    'weekly' => ['weekly', 7, [3]],
+    'monthly' => ['monthly', 30, [3, 1]],
 ]);
 
-it('tells the writer when nothing was merged', function (): void {
+it('still drafts when nothing was merged', function (): void {
     $this->mock(GitHubProvider::class)->shouldReceive('closedPullRequests')->with('dev-null-sh/dev-null.sh', 'production', Mockery::any(), Mockery::any())->andReturn([]);
-    EmailWriter::fake([['subject' => 'Quiet week', 'body' => 'Nothing shipped.']]);
+    $this->mock(EmailDraftProvider::class)->shouldReceive('draft')->once()->with(7, [])->andReturn(['subject' => 'Quiet week', 'body' => 'Nothing shipped.']);
 
     $this->actingAs(User::factory()->create(['handle' => 'admin']))
         ->postJson(route('email-draft.store'), ['draft' => 'weekly'])
-        ->assertOk();
-
-    EmailWriter::assertPrompted('No pull requests were merged.');
+        ->assertOk()
+        ->assertExactJson(['subject' => 'Quiet week', 'body' => 'Nothing shipped.']);
 });
 
 it('fails when the changelog can not be read', function (): void {
     $this->mock(GitHubProvider::class)->shouldReceive('closedPullRequests')->andThrow(new ConnectionException('timed out'));
-    EmailWriter::fake()->preventStrayPrompts();
+    $this->mock(EmailDraftProvider::class)->shouldNotReceive('draft');
 
     $this->actingAs(User::factory()->create(['handle' => 'admin']))
         ->postJson(route('email-draft.store'), ['draft' => 'weekly'])
         ->assertInternalServerError();
-
-    EmailWriter::assertNeverPrompted();
 });
 
 it('does not draft emails for non admins', function (): void {
-    EmailWriter::fake()->preventStrayPrompts();
+    $this->mock(EmailDraftProvider::class)->shouldNotReceive('draft');
 
     $this->actingAs(User::factory()->create())
         ->postJson(route('email-draft.store'), ['draft' => 'weekly'])

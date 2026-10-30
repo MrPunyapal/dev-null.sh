@@ -6,6 +6,7 @@ use App\Exceptions\InvalidTranslation;
 use App\Services\TranslationProviders\OpenCodeTranslationProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Pest\Expectation;
 
 beforeEach(function (): void {
     config(['ai.providers.opencode.key' => 'test-key']);
@@ -42,8 +43,8 @@ it('only detects the language without one to translate into', function (): void 
 it('says why an answer is not a translation', function (string $content, string $reason): void {
     Http::fake(['opencode.ai/*' => Http::response(openCodeAnswer($content))]);
 
-    expect(fn () => new OpenCodeTranslationProvider()->translate('Guten morgen', 'en'))
-        ->toThrow(fn (InvalidTranslation $exception) => expect($exception->reason)->toBe($reason)
+    expect(fn (): array => new OpenCodeTranslationProvider()->translate('Guten morgen', 'en'))
+        ->toThrow(fn (InvalidTranslation $exception): Expectation => expect($exception->reason)->toBe($reason)
             ->and($exception->getMessage())->toBe('Invalid translation response.'));
 })->with([
     'empty response' => ['', 'empty_or_malformed_response'],

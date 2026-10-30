@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Services\ToolDecisionProviders\OpenAIToolDecisionProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Messages\Message;
 
@@ -61,7 +62,7 @@ it('needs no tool when none is selected', function (): void {
 it('fails when OpenAI cannot decide', function (Closure $response, string $exception): void {
     Http::fake(['api.openai.com/v1/decisions' => $response]);
 
-    expect(fn () => new OpenAIToolDecisionProvider()->tools('@tom hello', []))->toThrow($exception);
+    expect(fn (): Collection => new OpenAIToolDecisionProvider()->tools('@tom hello', []))->toThrow($exception);
 })->with([
     'provider error' => [fn () => Http::response('sensitive provider response', 500), RequestException::class],
     'malformed probability' => [fn () => Http::response(['answers' => [['name' => 'SearchCommits', 'type' => 'predicate', 'probability' => [1]]]]), TypeError::class],
