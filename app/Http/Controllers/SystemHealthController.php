@@ -8,7 +8,6 @@ use App\Http\Requests\ShowSystemHealthRequest;
 use App\Queries\ConnectivityQuery;
 use App\Queries\FailedJobsQuery;
 use App\Queries\FailedJobTrendQuery;
-use App\Queries\FathomTrafficQuery;
 use App\Queries\GitHubRateLimitQuery;
 use App\Queries\LinkPreviewHealthQuery;
 use App\Queries\ModerationBacklogQuery;
@@ -32,7 +31,6 @@ final readonly class SystemHealthController
         ModerationBacklogQuery $moderation,
         RuntimeQuery $runtime,
         GitHubRateLimitQuery $githubRateLimit,
-        FathomTrafficQuery $traffic,
     ): Response {
         return Inertia::render('operations/health', [
             'queues' => $queues->get(...),
@@ -42,7 +40,6 @@ final readonly class SystemHealthController
             'linkPreviews' => $linkPreviews->get(...),
             'moderation' => $moderation->get(...),
             'runtime' => $runtime->get(...),
-            'hasTraffic' => $traffic->isConfigured(),
             'githubRateLimit' => Inertia::defer($githubRateLimit->get(...)),
         ]);
     }

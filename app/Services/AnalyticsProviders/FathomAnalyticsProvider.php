@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Queries;
+namespace App\Services\AnalyticsProviders;
 
+use App\Contracts\Services\AnalyticsProvider;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Client\HttpClientException;
@@ -15,14 +16,10 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Fluent;
 
 /**
- * @phpstan-type TrafficBreakdown array{name: string, visitors: int, pageviews: int}
- * @phpstan-type TrafficReport array{
- *     current: int,
- *     totals: array{visitors: int, pageviews: int, avg_duration: int, bounce_rate: float},
- *     breakdowns: array<string, array<int, TrafficBreakdown>>
- * }
+ * @phpstan-import-type TrafficBreakdown from AnalyticsProvider
+ * @phpstan-import-type TrafficReport from AnalyticsProvider
  */
-final readonly class FathomTrafficQuery
+final readonly class FathomAnalyticsProvider implements AnalyticsProvider
 {
     /**
      * The hidden context key marking Fathom as not answering for the rest of the request.
@@ -40,23 +37,18 @@ final readonly class FathomTrafficQuery
         'browsers' => 'browser',
     ];
 
-    public function isConfigured(): bool
-    {
-        return filled(config('services.fathom.token')) && filled(config('services.fathom.site_id'));
-    }
-
     /**
      * Every Fathom API call counts against the account's monthly pageviews and hourly rate limit, so current visitors
      * are cached for a minute and each range's report for five. A failed read is not cached, so the next refresh tries
-     * again. Breakdowns are the top ten by visitors, and an empty name is a direct visit or an unknown value.
+     * again.
      *
      * @return TrafficReport|null
      */
-    public function get(CarbonImmutable $from, CarbonImmutable $to): ?array
+    public function traffic(CarbonImmutable $from, CarbonImmutable $to): ?array
     {
         try {
             $current = Cache::remember('operations:fathom-current', 60, fn (): mixed => $this->request()
-                ->get('current_visitors', ['site_id' => config('services.fathom.site_id')])
+                ->get('current_visitors', ['site_id' => $this->siteId()])
                 ->throw()
                 ->json('total'));
 
@@ -85,8 +77,7 @@ final readonly class FathomTrafficQuery
     }
 
     /**
-     * The people who sent the event in the range, a custom event tracked in the browser, or null when Fathom isn't set
-     * up or didn't answer. Cached for five minutes, like the report.
+     * Cached for five minutes, like the report.
      */
     public function eventVisitors(CarbonImmutable $from, CarbonImmutable $to, string $event): ?int
     {
@@ -96,8 +87,7 @@ final readonly class FathomTrafficQuery
     }
 
     /**
-     * The people who sent the event on each UTC day of the range that has any, by date, or null when Fathom isn't set up
-     * or didn't answer. Cached for five minutes, like the report.
+     * Cached for five minutes, like the report.
      *
      * @return array<string, int>|null
      */
@@ -116,9 +106,7 @@ final readonly class FathomTrafficQuery
     }
 
     /**
-     * The people who sent the event in the range for each value of a Fathom field, device_type say, most first, or
-     * null when Fathom isn't set up or didn't answer. An empty name is an unknown value. Cached for five minutes, like
-     * the report.
+     * Cached for five minutes, like the report.
      *
      * @return array<string, int>|null
      */
@@ -146,7 +134,7 @@ final readonly class FathomTrafficQuery
      */
     private function count(string $key, Closure $count): int|array|null
     {
-        if (! $this->isConfigured() || Context::hasHidden(self::UNAVAILABLE)) {
+        if (Context::hasHidden(self::UNAVAILABLE)) {
             return null;
         }
 
@@ -188,8 +176,8 @@ final readonly class FathomTrafficQuery
         return $this->request()
             ->get('aggregations', [
                 ...$event === null
-                    ? ['entity' => 'pageview', 'entity_id' => config('services.fathom.site_id')]
-                    : ['entity' => 'event', 'site_id' => config('services.fathom.site_id'), 'entity_name' => $event],
+                    ? ['entity' => 'pageview', 'entity_id' => $this->siteId()]
+                    : ['entity' => 'event', 'site_id' => $this->siteId(), 'entity_name' => $event],
                 'date_from' => $from->utc()->startOfDay()->format('Y-m-d H:i:s'),
                 'date_to' => $to->utc()->endOfDay()->min(now())->format('Y-m-d H:i:s'),
                 'timezone' => 'UTC',
@@ -198,11 +186,22 @@ final readonly class FathomTrafficQuery
             ->throw();
     }
 
+    private function siteId(): string
+    {
+        $siteId = config('services.fathom.site_id');
+        assert(is_string($siteId));
+
+        return $siteId;
+    }
+
     private function request(): PendingRequest
     {
+        $token = config('services.fathom.token');
+        assert(is_string($token));
+
         return Http::baseUrl('https://api.usefathom.com/v1')
             ->acceptJson()
-            ->withToken(config()->string('services.fathom.token'))
+            ->withToken($token)
             ->connectTimeout(3)
             ->timeout(5);
     }

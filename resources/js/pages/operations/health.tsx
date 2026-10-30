@@ -206,7 +206,6 @@ export default function Health({
     moderation: ModerationBacklog;
     runtime: Runtime;
     githubRateLimit?: GitHubRateLimit | null;
-    hasTraffic: boolean;
 }) {
     return (
         <>

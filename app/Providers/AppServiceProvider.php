@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\Services\AnalyticsProvider;
 use App\Contracts\Services\DnsResolver;
 use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
@@ -14,6 +15,8 @@ use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
 use App\Exceptions\ApiException;
 use App\Models\User;
+use App\Services\AnalyticsProviders\FathomAnalyticsProvider;
+use App\Services\AnalyticsProviders\NullAnalyticsProvider;
 use App\Services\CodeTheme;
 use App\Services\DnsResolvers\SystemDnsResolver;
 use App\Services\EmbeddingProviders\NullEmbeddingProvider;
@@ -46,6 +49,7 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array PRODUCTION_SERVICES = [
+        AnalyticsProvider::class => FathomAnalyticsProvider::class,
         EmbeddingProvider::class => OpenAIEmbeddingProvider::class,
         GitHubProvider::class => HttpGitHubProvider::class,
         ModerationProvider::class => OpenAIModerationProvider::class,
@@ -60,6 +64,7 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array LOCAL_SERVICES = [
+        AnalyticsProvider::class => NullAnalyticsProvider::class,
         EmbeddingProvider::class => NullEmbeddingProvider::class,
         GitHubProvider::class => NullGitHubProvider::class,
         ModerationProvider::class => NullModerationProvider::class,

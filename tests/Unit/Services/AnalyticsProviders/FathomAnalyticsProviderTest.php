@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Queries\FathomTrafficQuery;
+use App\Contracts\Services\AnalyticsProvider;
+use App\Providers\AppServiceProvider;
+use App\Services\AnalyticsProviders\FathomAnalyticsProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -13,16 +15,12 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-10-18 12:00:00'));
 });
 
-it('is only available when a Fathom token and site are configured', function (?string $token, ?string $siteId, bool $isConfigured): void {
-    config(['services.fathom.token' => $token, 'services.fathom.site_id' => $siteId]);
+it('is the analytics provider in production', function (): void {
+    app()->detectEnvironment(fn (): string => 'production');
+    app()->register(AppServiceProvider::class, force: true);
 
-    expect(resolve(FathomTrafficQuery::class)->isConfigured())->toBe($isConfigured);
-})->with([
-    [null, 'SITE', false],
-    ['', 'SITE', false],
-    ['token', null, false],
-    ['token', 'SITE', true],
-]);
+    expect(resolve(AnalyticsProvider::class))->toBeInstanceOf(FathomAnalyticsProvider::class);
+});
 
 it('reads current visitors, totals, and the top pages, referrers, countries, devices, and browsers in the range', function (): void {
     Http::fake([
@@ -35,7 +33,7 @@ it('reads current visitors, totals, and the top pages, referrers, countries, dev
         }),
     ]);
 
-    $traffic = resolve(FathomTrafficQuery::class)->get(CarbonImmutable::parse('2026-10-12'), CarbonImmutable::parse('2026-10-18'));
+    $traffic = new FathomAnalyticsProvider()->traffic(CarbonImmutable::parse('2026-10-12'), CarbonImmutable::parse('2026-10-18'));
 
     expect($traffic)->toBe([
         'current' => 7,
@@ -63,26 +61,26 @@ it('caches current visitors for a minute and each range for five', function (): 
         'api.usefathom.com/v1/aggregations*' => Http::response([]),
     ]);
 
-    $query = resolve(FathomTrafficQuery::class);
+    $provider = new FathomAnalyticsProvider();
     $from = CarbonImmutable::parse('2026-10-01');
     $to = CarbonImmutable::parse('2026-10-10');
 
-    $query->get($from, $to);
-    $query->get($from, $to);
+    $provider->traffic($from, $to);
+    $provider->traffic($from, $to);
 
     Http::assertSentCount(7);
 
     $this->travel(61)->seconds();
-    $query->get($from, $to);
+    $provider->traffic($from, $to);
 
     Http::assertSentCount(8);
 
     $this->travel(240)->seconds();
-    $query->get($from, $to);
+    $provider->traffic($from, $to);
 
     Http::assertSentCount(15);
 
-    $query->get($from, $to->addDay());
+    $provider->traffic($from, $to->addDay());
 
     Http::assertSentCount(21);
 });
@@ -93,7 +91,7 @@ it('counts no traffic as zero', function (): void {
         'api.usefathom.com/v1/aggregations*' => Http::response([]),
     ]);
 
-    expect(resolve(FathomTrafficQuery::class)->get(today()->toImmutable(), today()->toImmutable()))->toBe([
+    expect(new FathomAnalyticsProvider()->traffic(today()->toImmutable(), today()->toImmutable()))->toBe([
         'current' => 0,
         'totals' => ['visitors' => 0, 'pageviews' => 0, 'avg_duration' => 0, 'bounce_rate' => 0.0],
         'breakdowns' => ['pages' => [], 'referrers' => [], 'countries' => [], 'devices' => [], 'browsers' => []],
@@ -103,7 +101,7 @@ it('counts no traffic as zero', function (): void {
 it('is null when Fathom cannot be reached or answers with something unexpected', function (mixed $response): void {
     Http::fake(['api.usefathom.com/*' => $response]);
 
-    expect(resolve(FathomTrafficQuery::class)->get(today()->toImmutable(), today()->toImmutable()))->toBeNull();
+    expect(new FathomAnalyticsProvider()->traffic(today()->toImmutable(), today()->toImmutable()))->toBeNull();
 })->with([
     'an error' => fn () => Http::response(['error' => 'Unauthenticated'], 401),
     'rate limited' => fn () => Http::response([], 429),
@@ -114,12 +112,12 @@ it('is null when Fathom cannot be reached or answers with something unexpected',
 it('counts the people who sent an event, cached for five minutes', function (): void {
     Http::fake(['api.usefathom.com/v1/aggregations*' => Http::response([['unique_conversions' => '7']])]);
 
-    $query = resolve(FathomTrafficQuery::class);
+    $provider = new FathomAnalyticsProvider();
     $from = CarbonImmutable::parse('2026-10-01');
     $to = CarbonImmutable::parse('2026-10-18');
 
-    expect($query->eventVisitors($from, $to, 'signup'))->toBe(7)
-        ->and($query->eventVisitors($from, $to, 'signup'))->toBe(7);
+    expect($provider->eventVisitors($from, $to, 'signup'))->toBe(7)
+        ->and($provider->eventVisitors($from, $to, 'signup'))->toBe(7);
 
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.usefathom.com/v1/aggregations?entity=event&site_id=SITE'
@@ -132,7 +130,7 @@ it('counts the people who sent an event on each day', function (): void {
         ['unique_conversions' => '9', 'date' => '2026-10-18'],
     ])]);
 
-    expect(resolve(FathomTrafficQuery::class)->eventVisitorsByDay(CarbonImmutable::parse('2026-10-16'), CarbonImmutable::parse('2026-10-18'), 'signup'))
+    expect(new FathomAnalyticsProvider()->eventVisitorsByDay(CarbonImmutable::parse('2026-10-16'), CarbonImmutable::parse('2026-10-18'), 'signup'))
         ->toBe(['2026-10-16' => 7, '2026-10-18' => 9]);
 
     Http::assertSent(fn (Request $request): bool => $request->data()['date_grouping'] === 'day');
@@ -144,26 +142,21 @@ it('counts the people who sent an event for each value of a field, most first', 
         ['unique_conversions' => '7', 'device_type' => 'Desktop'],
     ])]);
 
-    expect(resolve(FathomTrafficQuery::class)->eventVisitorsBy(CarbonImmutable::parse('2026-10-16'), CarbonImmutable::parse('2026-10-18'), 'signup', 'device_type'))
+    expect(new FathomAnalyticsProvider()->eventVisitorsBy(CarbonImmutable::parse('2026-10-16'), CarbonImmutable::parse('2026-10-18'), 'signup', 'device_type'))
         ->toBe(['Phone' => 9, 'Desktop' => 7]);
 
     Http::assertSent(fn (Request $request): bool => $request->data()['field_grouping'] === 'device_type'
         && $request->data()['sort_by'] === 'unique_conversions:desc');
 });
 
-it('has no counts without Fathom, and stops asking it for the rest of the request once it cannot be reached', function (): void {
+it('stops asking Fathom for the rest of the request once it cannot be reached', function (): void {
     $from = CarbonImmutable::parse('2026-10-01');
     $to = CarbonImmutable::parse('2026-10-18');
 
-    config(['services.fathom.token' => null]);
-
-    expect(resolve(FathomTrafficQuery::class)->eventVisitors($from, $to, 'signup'))->toBeNull();
-
-    config(['services.fathom.token' => 'token']);
     Http::fake(['api.usefathom.com/*' => Http::response(status: 500)]);
 
-    expect(resolve(FathomTrafficQuery::class)->eventVisitors($from, $to, 'signup'))->toBeNull()
-        ->and(resolve(FathomTrafficQuery::class)->eventVisitors($from, $to, 'guest-visit'))->toBeNull();
+    expect(new FathomAnalyticsProvider()->eventVisitors($from, $to, 'signup'))->toBeNull()
+        ->and(new FathomAnalyticsProvider()->eventVisitors($from, $to, 'guest-visit'))->toBeNull();
 
     Http::assertSentCount(1);
 });

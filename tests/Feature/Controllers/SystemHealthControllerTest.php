@@ -43,7 +43,6 @@ it('shows the operational health of the app to admins', function (): void {
                 'cache' => 'array',
                 'queue' => 'database',
             ])
-            ->where('hasTraffic', false)
             ->missing('githubRateLimit'));
 });
 
