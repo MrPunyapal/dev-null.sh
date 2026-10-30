@@ -19,15 +19,26 @@ final class ShowOrganizationRequest extends FormRequest
     }
 
     /**
-     * @return array{}
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'tab' => ['nullable', 'string', 'in:mentions'],
+        ];
     }
 
     /**
-     * Organizations share the "@handle" pages with users, so this is the handle no user has.
+     * Mentions is the only tab so far, so it's the default.
+     */
+    public function tab(): string
+    {
+        return 'mentions';
+    }
+
+    /**
+     * Organizations share the "@handle" pages with users, so this is the handle no user has, whatever its case,
+     * the exact case first.
      */
     public function organization(): ?Profile
     {
@@ -36,7 +47,9 @@ final class ShowOrganizationRequest extends FormRequest
 
         return $this->organization ??= Profile::query()
             ->where('type', ProfileType::Organization)
-            ->where('handle', $handle)
+            ->whereRaw('LOWER(handle) = LOWER(?)', [$handle])
+            ->orderByRaw('handle = ? desc', [$handle])
+            ->orderBy('handle')
             ->first();
     }
 }

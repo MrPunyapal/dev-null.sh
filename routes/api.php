@@ -37,6 +37,8 @@ use App\Http\Controllers\Api\MessageReactionController;
 use App\Http\Controllers\Api\MessageVoiceController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\NotificationGroupController;
+use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\OrganizationMentionController;
 use App\Http\Controllers\Api\OrgArchiveController;
 use App\Http\Controllers\Api\OrgController;
 use App\Http\Controllers\Api\OrgMemberController;
@@ -105,6 +107,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             ->name('api-commit.show');
         Route::get('commits/{commit}/related', [RelatedCommitController::class, 'index'])
             ->name('api-related-commit.index');
+        Route::get('organizations/{handle}', [OrganizationController::class, 'show'])
+            ->name('api-organization.show');
+        Route::get('organizations/{handle}/mentions', [OrganizationMentionController::class, 'index'])
+            ->name('api-organization-mention.index');
     });
 
     // The Mac app's latest release, which its update check compares with, unsigned so it sends nothing about anyone...
@@ -378,7 +384,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         // Remotes: finding people to push to, and starting an org, as the web's New remote and New org do...
         Route::middleware('throttle:conversations')->group(function (): void {
             Route::get('remotes/candidates', [RemoteCandidateController::class, 'index'])->name('api-remote-candidate.index');
-            Route::post('remotes/orgs', [OrgController::class, 'store'])->middleware('throttle:messages')->name('api-org.store');
+            Route::post('remotes/orgs', [OrgController::class, 'store'])->middleware([PreventPostingInTimeout::class, 'throttle:messages'])->name('api-org.store');
         });
 
         // Remotes: renaming an org and managing its members, as the web's org settings do...
