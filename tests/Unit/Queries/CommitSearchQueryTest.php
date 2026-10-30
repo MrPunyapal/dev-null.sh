@@ -50,6 +50,7 @@ it('limits the number of results', function (): void {
 it('returns nothing, and asks for nothing, for a term shorter than three characters', function (string $term): void {
     $embeddings = $this->mock(EmbeddingProvider::class);
     $embeddings->shouldNotReceive('embed');
+
     $relevance = $this->mock(RelevanceProvider::class);
     $relevance->shouldNotReceive('decideRelevance');
 

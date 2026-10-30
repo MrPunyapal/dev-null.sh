@@ -11,6 +11,7 @@ use App\Contracts\Services\LinkPreviewProvider;
 use App\Contracts\Services\ModerationProvider;
 use App\Contracts\Services\PushNotificationProvider;
 use App\Contracts\Services\RelevanceProvider;
+use App\Contracts\Services\TranslationProvider;
 use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
 use App\Exceptions\ApiException;
@@ -30,6 +31,8 @@ use App\Services\PushNotificationProviders\NullPushNotificationProvider;
 use App\Services\PushNotificationProviders\WebPushNotificationProvider;
 use App\Services\RelevanceProviders\NullRelevanceProvider;
 use App\Services\RelevanceProviders\OpenAIRelevanceProvider;
+use App\Services\TranslationProviders\NullTranslationProvider;
+use App\Services\TranslationProviders\OpenCodeTranslationProvider;
 use App\Services\TurnProviders\CloudflareTurnProvider;
 use App\Services\TurnProviders\LocalTurnProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -57,6 +60,7 @@ final class AppServiceProvider extends ServiceProvider
         ModerationProvider::class => OpenAIModerationProvider::class,
         PushNotificationProvider::class => WebPushNotificationProvider::class,
         RelevanceProvider::class => OpenAIRelevanceProvider::class,
+        TranslationProvider::class => OpenCodeTranslationProvider::class,
         TurnProvider::class => CloudflareTurnProvider::class,
     ];
 
@@ -73,6 +77,7 @@ final class AppServiceProvider extends ServiceProvider
         ModerationProvider::class => NullModerationProvider::class,
         PushNotificationProvider::class => NullPushNotificationProvider::class,
         RelevanceProvider::class => NullRelevanceProvider::class,
+        TranslationProvider::class => NullTranslationProvider::class,
         TurnProvider::class => LocalTurnProvider::class,
     ];
 

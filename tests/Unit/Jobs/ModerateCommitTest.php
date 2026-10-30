@@ -350,6 +350,7 @@ it('approves reputable authors without calling the ai even when they have been r
     $moderation = $this->mock(ModerationProvider::class);
     $moderation->shouldNotReceive('moderate');
     $moderation->shouldNotReceive('isHarmful');
+
     $user = User::factory()->create(['created_at' => now()->subHours(2)]);
     $reported = Commit::factory()->for($user)->create();
     followersOf($user, 10);

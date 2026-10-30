@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Actions\CreateCommitTranslation;
 use App\Actions\CreateExport;
 use App\Actions\DeleteUser;
-use App\Ai\Agents\CommitTranslator;
+use App\Contracts\Services\TranslationProvider;
 use App\Enums\ModerationReason;
 use App\Enums\NotificationType;
 use App\Models\Commit;
@@ -216,7 +216,8 @@ it('exports all the signed-in users commits including replies, deleted ones, and
     $otherReply = Commit::factory()->for($other)->create(['parent_id' => $approved->id, 'body' => 'Another developer reply body']);
     Commit::factory()->for($other)->pending()->create();
 
-    CommitTranslator::fake([['source_language' => 'en', 'body' => 'Unicode-ondersteuning geleverd 🚀']]);
+    $this->mock(TranslationProvider::class)->shouldReceive('translate')->once()
+        ->andReturn(['source_language' => 'en', 'body' => 'Unicode-ondersteuning geleverd 🚀']);
     resolve(CreateCommitTranslation::class)->handle($approved, 'nl');
 
     $response = $this->actingAs($user)->get(route('export', ['user_id' => $other->id]));

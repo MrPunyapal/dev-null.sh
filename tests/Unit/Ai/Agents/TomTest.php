@@ -261,6 +261,7 @@ it('uses public thread context for the decision and falls back to chat when no t
     ]);
     $github = $this->mock(GitHubProvider::class);
     $github->shouldNotReceive('contributors', 'repository', 'languages', 'searchIssues', 'searchCommits', 'closedPullRequests');
+
     $embeddings = $this->mock(EmbeddingProvider::class);
     $embeddings->shouldNotReceive('embed');
 

@@ -6,7 +6,7 @@ use App\Actions\CreateCommitTopics;
 use App\Actions\CreateCommitTranslation;
 use App\Actions\DeleteUser;
 use App\Actions\UpdateCommitHotScores;
-use App\Ai\Agents\CommitTranslator;
+use App\Contracts\Services\TranslationProvider;
 use App\Dto\ThreadEngagement;
 use App\Models\Commit;
 use App\Models\CommitImage;
@@ -295,10 +295,10 @@ it('erases however many commits a user has without listing them in its queries',
 });
 
 it('erases cached translations of the user and replies in their deleted threads', function (): void {
-    CommitTranslator::fake([
+    $this->mock(TranslationProvider::class)->shouldReceive('translate')->twice()->andReturn(
         ['source_language' => 'de', 'body' => 'Good morning'],
         ['source_language' => 'nl', 'body' => 'Good evening'],
-    ]);
+    );
     $user = User::factory()->create();
     $commit = Commit::factory()->for($user)->create(['body' => 'Guten morgen']);
     Commit::factory()->for($user)->count(500)->create(['body' => 'Other posts']);
