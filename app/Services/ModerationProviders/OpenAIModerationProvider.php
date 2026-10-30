@@ -4,19 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\ModerationProviders;
 
+use App\Ai\Agents\HarmReviewer;
 use App\Contracts\Services\ModerationProvider;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
-use Laravel\Ai\Enums\Lab;
-
-use function Laravel\Ai\agent;
 
 final readonly class OpenAIModerationProvider implements ModerationProvider
 {
     private const string MODERATION_MODEL = 'omni-moderation-latest';
-
-    private const string REVIEW_MODEL = 'gpt-6.1-sol';
 
     /**
      * Far stricter than OpenAI's own cut-off: any category scoring this much is flagged.
@@ -29,15 +24,6 @@ final readonly class OpenAIModerationProvider implements ModerationProvider
     private const array THRESHOLDS = [
         'sexual/minors' => 0.01,
     ];
-
-    private const string HARMFUL_INSTRUCTIONS = <<<'TEXT'
-        You review posts on /dev/null, a social network for developers, before they are published.
-        Answer whether the post is harmful: a threat, including claims of having a bomb, weapon or explosive, or of
-        planning an attack, even as a joke; violence, incitement or glorification of it; hate speech or harassment of a
-        person or group; sexual content; encouragement of self-harm; or illegal activity. Developer jargon such as
-        "kill the process", "nuke the database" or "this release is the bomb" is not harmful. Disliking a technology
-        is not harmful either. When unsure, answer true.
-        TEXT;
 
     /**
      * The categories the content is flagged for, if any, each with its highest score: those OpenAI flags, and those
@@ -90,15 +76,7 @@ final readonly class OpenAIModerationProvider implements ModerationProvider
      */
     public function isHarmful(string $text): bool
     {
-        $answer = agent(
-            instructions: self::HARMFUL_INSTRUCTIONS,
-            schema: fn (JsonSchema $schema): array => ['harmful' => $schema->boolean()->required()],
-        )->prompt(
-            $text,
-            provider: Lab::OpenAI,
-            model: self::REVIEW_MODEL,
-            timeout: 60,
-        );
+        $answer = new HarmReviewer()->prompt($text);
 
         return ($answer['harmful'] ?? null) !== false;
     }

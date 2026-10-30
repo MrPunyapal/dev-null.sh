@@ -8,6 +8,7 @@ use App\Providers\AppServiceProvider;
 use App\Services\GitHubProviders\HttpGitHubProvider;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
@@ -35,6 +36,24 @@ it('calls the API as the OAuth app', function (): void {
         && $request->header('X-GitHub-Api-Version') === ['2022-11-28']
         && $request->header('Authorization') === ['Basic '.base64_encode('client-id:client-secret')]);
 });
+
+it('downloads an avatar', function (): void {
+    Http::fake(['avatars.githubusercontent.com/*' => Http::response('image-bytes')]);
+
+    expect(new HttpGitHubProvider()->avatar('https://avatars.githubusercontent.com/u/583231'))->toBe('image-bytes');
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://avatars.githubusercontent.com/u/583231');
+});
+
+it('has no avatar when it cannot be downloaded', function (Closure|PromiseInterface $response): void {
+    Http::fake(['avatars.githubusercontent.com/*' => $response]);
+
+    expect(new HttpGitHubProvider()->avatar('https://avatars.githubusercontent.com/u/583231'))->toBeNull();
+})->with([
+    'an error' => fn (): PromiseInterface => Http::response('', 500),
+    'not found' => fn (): PromiseInterface => Http::response('', 404),
+    'unreachable' => fn (): Closure => Http::failedConnection(),
+]);
 
 it('reads the core rate limit', function (): void {
     $resetsAt = now()->addMinutes(30);

@@ -131,6 +131,17 @@ final readonly class HttpGitHubProvider implements GitHubProvider
             ->all();
     }
 
+    public function avatar(string $url): ?string
+    {
+        try {
+            $response = Http::timeout(3)->connectTimeout(2)->get($url);
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        return $response->successful() ? $response->body() : null;
+    }
+
     public function readme(string $login): ?string
     {
         $response = $this->request()

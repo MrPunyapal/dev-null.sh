@@ -78,6 +78,11 @@ interface GitHubProvider
     public function sshKeys(string $login): array;
 
     /**
+     * The image behind an account's avatar URL, null when it can't be fetched.
+     */
+    public function avatar(string $url): ?string;
+
+    /**
      * The README of the account's profile repository, rendered as HTML by GitHub. Null when there is none.
      */
     public function readme(string $login): ?string;

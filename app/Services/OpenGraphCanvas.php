@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Contracts\Services\GitHubProvider;
 use App\Models\Profile;
 use App\Models\User;
 use GdImage;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
@@ -54,7 +53,7 @@ final readonly class OpenGraphCanvas
 
     private GdImage $image;
 
-    public function __construct()
+    public function __construct(private GitHubProvider $github)
     {
         $this->image = $this->blank(self::WIDTH * self::SCALE, self::HEIGHT * self::SCALE);
     }
@@ -315,21 +314,13 @@ final readonly class OpenGraphCanvas
 
     private function download(?string $url): ?GdImage
     {
-        if ($url === null) {
+        $body = $url === null ? null : $this->github->avatar($url);
+
+        if ($body === null || @getimagesizefromstring($body) === false) {
             return null;
         }
 
-        try {
-            $response = Http::timeout(3)->connectTimeout(2)->get($url);
-        } catch (ConnectionException) {
-            return null;
-        }
-
-        if (! $response->successful() || @getimagesizefromstring($response->body()) === false) {
-            return null;
-        }
-
-        $avatar = @imagecreatefromstring($response->body());
+        $avatar = @imagecreatefromstring($body);
 
         return $avatar instanceof GdImage ? $avatar : null;
     }

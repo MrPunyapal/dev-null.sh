@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\Contracts\Services\GitHubProvider;
 use App\Models\Profile;
 use App\Services\OpenGraphCanvas;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,11 @@ final readonly class CreateOrganizationOpenGraphImage
     private const int BIO_LINE_HEIGHT = 50;
 
     private const int BIO_MAX_LINES = 3;
+
+    public function __construct(private GitHubProvider $github)
+    {
+        //
+    }
 
     public function handle(Profile $organization): string
     {
@@ -32,7 +38,7 @@ final readonly class CreateOrganizationOpenGraphImage
      */
     private function render(Profile $organization): string
     {
-        $canvas = new OpenGraphCanvas;
+        $canvas = new OpenGraphCanvas($this->github);
         $lane = $organization->lane() === null ? OpenGraphCanvas::PRIMARY : $canvas->lane($organization->lane());
         $width = OpenGraphCanvas::CONTENT_RIGHT - OpenGraphCanvas::CONTENT_X;
 

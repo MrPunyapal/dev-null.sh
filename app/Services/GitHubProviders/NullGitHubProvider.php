@@ -57,6 +57,11 @@ final readonly class NullGitHubProvider implements GitHubProvider
         return [];
     }
 
+    public function avatar(string $url): ?string
+    {
+        return null;
+    }
+
     public function readme(string $login): ?string
     {
         return null;
