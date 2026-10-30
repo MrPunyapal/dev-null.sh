@@ -52,7 +52,7 @@ final readonly class FathomAnalyticsProvider implements AnalyticsProvider
                 ->throw()
                 ->json('total'));
 
-            if (! is_int($current)) {
+            if (! is_int($current) && (! is_string($current) || ! ctype_digit($current))) {
                 return null;
             }
 
@@ -73,7 +73,7 @@ final readonly class FathomAnalyticsProvider implements AnalyticsProvider
             return null;
         }
 
-        return ['current' => $current, ...$report];
+        return ['current' => (int) $current, ...$report];
     }
 
     /**
@@ -139,7 +139,9 @@ final readonly class FathomAnalyticsProvider implements AnalyticsProvider
         }
 
         try {
-            return Cache::remember("operations:fathom-{$key}", 300, $count);
+            $value = Cache::remember("operations:fathom-{$key}", 300, $count);
+
+            return is_array($value) ? $value : (int) $value;
         } catch (HttpClientException) {
             Context::addHidden(self::UNAVAILABLE, true);
 
