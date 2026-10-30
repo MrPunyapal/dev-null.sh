@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\EmbeddingProvider;
 use App\Jobs\UnfurlLink;
 use App\Models\Device;
 use App\Models\Message;
 use App\Models\User;
-use App\Services\OpenAI;
 use App\Services\SignedCommits;
 use App\Services\SignedRequests;
 use Carbon\CarbonInterface;
@@ -54,7 +54,7 @@ function sshFixture(string $name): string
  */
 function embeddingVector(int $dimension): array
 {
-    $vector = array_fill(0, OpenAI::EMBEDDING_DIMENSIONS, 0.0);
+    $vector = array_fill(0, EmbeddingProvider::DIMENSIONS, 0.0);
     $vector[$dimension] = 1.0;
 
     return $vector;
@@ -65,7 +65,7 @@ function embeddingVector(int $dimension): array
  */
 function embeddingAtDistance(float $distance): array
 {
-    $vector = array_fill(0, OpenAI::EMBEDDING_DIMENSIONS, 0.0);
+    $vector = array_fill(0, EmbeddingProvider::DIMENSIONS, 0.0);
     $vector[0] = 1 - $distance;
     $vector[1] = sqrt(1 - (1 - $distance) ** 2);
 
@@ -103,20 +103,6 @@ function relevanceResponse(array $verdicts): array
         $verdicts,
         array_keys($verdicts),
     )];
-}
-
-/**
- * The two requests a commit search makes: embedding the term, and the decision model's verdicts on the candidates. By
- * default every candidate is relevant, so only the filtering tests pass verdicts.
- *
- * @param  list<bool>  $verdicts
- */
-function fakeSearch(array $verdicts = []): void
-{
-    Http::fake([
-        'api.openai.com/v1/embeddings' => Http::response(embeddingsResponse([embeddingVector(0)])),
-        'api.openai.com/v1/decisions' => Http::response(relevanceResponse($verdicts)),
-    ]);
 }
 
 /**

@@ -7,6 +7,7 @@ use App\Actions\CreateTomReply;
 use App\Ai\Agents\Tom;
 use App\Ai\Tools\SearchCommits;
 use App\Ai\Tools\SearchKnowledgeBase;
+use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
 use App\Enums\CommitStatus;
 use App\Enums\Feature;
@@ -21,7 +22,6 @@ use App\Services\TomToolDecision;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Ai\Embeddings;
 use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Tools\Request as ToolRequest;
 
@@ -39,7 +39,6 @@ it('forces the selected tools before Tom answers and supports a bounded follow-u
     config(['ai.providers.openai.key' => 'test-openai', 'ai.providers.opencode.key' => 'test-opencode']);
     Queue::fake([EmbedCommit::class, ModerateCommit::class, ReplyAsTom::class]);
     resolve(Features::class)->update(Feature::Translations, false);
-    Embeddings::fake([[embeddingVector(0)], [embeddingVector(0)]]);
     $public = Commit::factory()->for(User::factory()->state(['location' => 'Portugal']))->create(['body' => 'Public database topic', 'embedding' => embeddingVector(0)]);
     Commit::factory()->pending()->create(['body' => 'Pending secret', 'embedding' => embeddingVector(0)]);
     Commit::factory()->rejected()->create(['body' => 'Rejected secret', 'embedding' => embeddingVector(0)]);
@@ -71,7 +70,7 @@ it('forces the selected tools before Tom answers and supports a bounded follow-u
     Http::fake([
         'api.openai.com/v1/decisions' => Http::sequence()->push(['answers' => collect($calls)->take(5)->map(fn (array $call): array => [
             'name' => $call['name'], 'type' => 'predicate', 'probability' => 1,
-        ])->all()])->push(relevanceResponse([true])),
+        ])->all()]),
         'opencode.ai/zen/v1/chat/completions' => $responses,
     ]);
     $github = $this->mock(GitHubProvider::class);
@@ -138,7 +137,6 @@ it('retains all three search sources through retries and removes only spent tool
     config(['ai.providers.openai.key' => 'test-openai', 'ai.providers.opencode.key' => 'test-opencode']);
     Queue::fake([EmbedCommit::class, ModerateCommit::class, ReplyAsTom::class]);
     resolve(Features::class)->update(Feature::Translations, false);
-    Embeddings::fake([[embeddingVector(0)]]);
     Commit::factory()->create(['body' => 'I like the new badges.', 'embedding' => embeddingVector(0)]);
     KnowledgeBaseSection::factory()->create(['headings' => ['Badges'], 'content' => 'Badges reward milestones.', 'embedding' => embeddingVector(0)]);
     $tom = User::factory()->create(['handle' => 'tom', 'github_id' => CreateTomFriendship::GITHUB_ID]);
@@ -161,9 +159,6 @@ it('retains all three search sources through retries and removes only spent tool
     ]]]]);
     $decisions = Http::sequence()->push(['answers' => collect(['SearchCommits', 'SearchKnowledgeBase', 'SearchRepositoryHistory'])
         ->map(fn (string $name): array => ['name' => $name, 'type' => 'predicate', 'probability' => 1])->all()]);
-    foreach (range(1, 2) as $search) {
-        $decisions->push(relevanceResponse([true]));
-    }
 
     Http::fake([
         'api.openai.com/v1/decisions' => $decisions,
@@ -266,6 +261,8 @@ it('uses public thread context for the decision and falls back to chat when no t
     ]);
     $github = $this->mock(GitHubProvider::class);
     $github->shouldNotReceive('contributors', 'repository', 'languages', 'searchIssues', 'searchCommits', 'closedPullRequests');
+    $embeddings = $this->mock(EmbeddingProvider::class);
+    $embeddings->shouldNotReceive('embed');
 
     resolve(CreateTomReply::class)->handle($question->id);
 
@@ -284,14 +281,12 @@ it('uses public thread context for the decision and falls back to chat when no t
     });
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://opencode.ai/zen/v1/chat/completions'
         && empty($request['tools']));
-    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/embeddings'));
 });
 
 it('retries skipped tools at most twice and never publishes an incomplete reply', function (int $skippedAttempts): void {
     config(['ai.providers.openai.key' => 'test-openai', 'ai.providers.opencode.key' => 'test-opencode']);
     Queue::fake([EmbedCommit::class, ModerateCommit::class, ReplyAsTom::class]);
     resolve(Features::class)->update(Feature::Translations, false);
-    Embeddings::fake([[embeddingVector(0)]]);
     KnowledgeBaseSection::factory()->create(['headings' => ['Pastéis'], 'content' => 'Pastéis are pastry awards.', 'embedding' => embeddingVector(0)]);
     $tom = User::factory()->create(['handle' => 'tom', 'github_id' => CreateTomFriendship::GITHUB_ID]);
     $root = Commit::factory()->create(['body' => 'What are pastels here?']);
@@ -396,7 +391,6 @@ it('bounds history by both posts and characters and signals a nearly full window
 })->with(['message limit' => [10, 12], 'character limit' => [3500, 3]]);
 
 it('caps tool results and search calls for each reply', function (): void {
-    Embeddings::fake([[embeddingVector(0)]]);
     KnowledgeBaseSection::factory()->count(4)->create(['content' => str_repeat('k', 4000), 'embedding' => embeddingVector(0)]);
     $tool = new SearchKnowledgeBase;
     $request = new ToolRequest(['query' => 'origins']);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\CreateCommitTranslation;
 use App\Ai\Agents\CommitTranslator;
+use App\Contracts\Services\ModerationProvider;
 use App\Enums\CommitStatus;
 use App\Enums\NotificationType;
 use App\Jobs\DetectCommitLanguage;
@@ -11,7 +12,6 @@ use App\Jobs\ModerateCommit;
 use App\Models\Commit;
 use App\Models\LinkPreview;
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
@@ -91,16 +91,9 @@ it('lets moderators detect and translate pending commits without approving them'
 });
 
 it('keeps ai suggestions private and notifies the quoted author only after moderator approval', function (): void {
-    config(['ai.providers.openai.key' => 'sk-test']);
-    Http::fake([
-        'api.openai.com/v1/moderations' => Http::response(['results' => [[
-            'categories' => ['harassment' => true],
-            'category_scores' => ['harassment' => 0.9],
-        ]]]),
-        'api.openai.com/v1/responses' => Http::response(['output' => [['content' => [
-            ['type' => 'output_text', 'text' => json_encode(['harmful' => false])],
-        ]]]]),
-    ]);
+    $moderation = $this->mock(ModerationProvider::class);
+    $moderation->shouldReceive('moderate')->andReturn(['harassment' => 0.9]);
+    $moderation->shouldReceive('isHarmful')->andReturnFalse();
 
     $admin = User::factory()->create(['handle' => 'admin']);
     $quoted = Commit::factory()->create([

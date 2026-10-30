@@ -5,15 +5,24 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\Services\DnsResolver;
+use App\Contracts\Services\EmbeddingProvider;
 use App\Contracts\Services\GitHubProvider;
+use App\Contracts\Services\ModerationProvider;
+use App\Contracts\Services\RelevanceProvider;
 use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Services\CodeTheme;
 use App\Services\DnsResolvers\SystemDnsResolver;
+use App\Services\EmbeddingProviders\NullEmbeddingProvider;
+use App\Services\EmbeddingProviders\OpenAIEmbeddingProvider;
 use App\Services\GitHubProviders\HttpGitHubProvider;
 use App\Services\GitHubProviders\NullGitHubProvider;
+use App\Services\ModerationProviders\NullModerationProvider;
+use App\Services\ModerationProviders\OpenAIModerationProvider;
+use App\Services\RelevanceProviders\NullRelevanceProvider;
+use App\Services\RelevanceProviders\OpenAIRelevanceProvider;
 use App\Services\TurnProviders\CloudflareTurnProvider;
 use App\Services\TurnProviders\LocalTurnProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -34,7 +43,10 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array PRODUCTION_SERVICES = [
+        EmbeddingProvider::class => OpenAIEmbeddingProvider::class,
         GitHubProvider::class => HttpGitHubProvider::class,
+        ModerationProvider::class => OpenAIModerationProvider::class,
+        RelevanceProvider::class => OpenAIRelevanceProvider::class,
         TurnProvider::class => CloudflareTurnProvider::class,
     ];
 
@@ -44,7 +56,10 @@ final class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     private const array LOCAL_SERVICES = [
+        EmbeddingProvider::class => NullEmbeddingProvider::class,
         GitHubProvider::class => NullGitHubProvider::class,
+        ModerationProvider::class => NullModerationProvider::class,
+        RelevanceProvider::class => NullRelevanceProvider::class,
         TurnProvider::class => LocalTurnProvider::class,
     ];
 

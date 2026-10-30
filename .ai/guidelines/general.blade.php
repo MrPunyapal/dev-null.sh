@@ -4,7 +4,7 @@
 - Every time you create a new file, stage it immediately with `git add <path>`. Never commit; leave committing to the user.
 - Do not write browser tests (`tests/Browser`, Pest browser plugin, Playwright). Cover behavior with Feature and Unit tests only.
 - Migrations only go up: never write a `down` method. To undo a migration, write a new one.
-- Use the Laravel AI SDK for new AI features and semantic search query embeddings. Load the `ai-sdk-development` skill and keep the embedding provider, model, and dimensions compatible with the stored vectors.
+- Use the Laravel AI SDK for new AI features. Embeddings, stored or for search queries, all go through `EmbeddingProvider`, so they share one model and `EmbeddingProvider::DIMENSIONS`: changing either means embedding everything again. Load the `ai-sdk-development` skill when working with the SDK.
 - Whenever one of Tom's tools is added, removed, or changed, update `App\Services\TomToolDecision`'s decision policy and criteria, Tom's execution guidance (arguments and follow-up limits), and the routing tests in the same change.
 
 ## Commit attribution
