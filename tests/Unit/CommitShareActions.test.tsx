@@ -114,6 +114,33 @@ function render(value: Commit = commit, keyShortcut?: string): Element[] {
     );
 }
 
+function selectSend(value: Commit = commit): void {
+    (
+        render(value).find(
+            (element) => element.props['data-test'] === 'share-in-remotes',
+        )!.props.onSelect as () => void
+    )();
+}
+
+function closeShareMenu(value: Commit = commit): boolean {
+    const menu = render(value).find(
+        (element) =>
+            element.props.align === 'end' &&
+            typeof element.props.onCloseAutoFocus === 'function',
+    )!;
+    let prevented = false;
+
+    (menu.props.onCloseAutoFocus as (event: Event) => void)(
+        {
+            preventDefault: () => {
+                prevented = true;
+            },
+        } as Event,
+    );
+
+    return prevented;
+}
+
 function pick(tree: Element[]): void {
     const picker = tree.find(
         (element) => element.props.pickerScope === 'share',
@@ -123,11 +150,8 @@ function pick(tree: Element[]): void {
 }
 
 function confirm(value: Commit = commit): Element[] {
-    (
-        render(value).find(
-            (element) => element.props['data-test'] === 'share-in-remotes',
-        )!.props.onSelect as () => void
-    )();
+    selectSend(value);
+    assert.equal(closeShareMenu(value), true);
     pick(render(value));
     const selected = render(value);
     const picker = selected.find(
@@ -164,11 +188,8 @@ test('only offers sharing for signed-in developers with Remotes and approved com
 });
 
 test('picking a recipient waits for the picker to close and never sends by itself', () => {
-    (
-        render().find(
-            (element) => element.props['data-test'] === 'share-in-remotes',
-        )!.props.onSelect as () => void
-    )();
+    selectSend();
+    assert.equal(closeShareMenu(), true);
     pick(render());
     const selected = render();
 
@@ -243,11 +264,13 @@ test('cancelling preserves the closing preview and sends nothing', () => {
     assert.equal(sendMessage.mock.calls.length, 0);
 });
 
-test('the share menu opens the recipient picker', () => {
-    const item = render().find(
-        (element) => element.props['data-test'] === 'share-in-remotes',
-    )!;
-    (item.props.onSelect as () => void)();
+test('the share menu opens the recipient picker after closing', () => {
+    selectSend();
+    assert.equal(
+        render().some((element) => element.props.pickerScope === 'share'),
+        false,
+    );
+    assert.equal(closeShareMenu(), true);
     assert.ok(
         render().find((element) => element.props.pickerScope === 'share'),
     );
@@ -306,34 +329,20 @@ test('sharing an absolute permalink preserves its host', () => {
 });
 
 test('opening the picker prevents the Share menu from stealing focus', () => {
-    (
-        render().find(
-            (element) => element.props['data-test'] === 'share-in-remotes',
-        )!.props.onSelect as () => void
-    )();
+    selectSend();
 
-    const tree = render();
-    const menu = tree.find(
-        (element) =>
-            element.props.align === 'end' &&
-            typeof element.props.onCloseAutoFocus === 'function',
-    )!;
-    const preventDefault = vi.fn();
-
-    (menu.props.onCloseAutoFocus as (event: Event) => void)(
-        { preventDefault } as unknown as Event,
+    assert.equal(closeShareMenu(), true);
+    assert.ok(
+        render().some((element) => element.props.pickerScope === 'share'),
     );
 
-    assert.equal(preventDefault.mock.calls.length, 1);
-    assert.ok(tree.some((element) => element.props.pickerScope === 'share'));
+    // Once the selection has been consumed, another close cannot reopen it.
+    assert.equal(closeShareMenu(), false);
 });
 
 test('cancelling the recipient picker restores focus to Share', () => {
-    (
-        render().find(
-            (element) => element.props['data-test'] === 'share-in-remotes',
-        )!.props.onSelect as () => void
-    )();
+    selectSend();
+    assert.equal(closeShareMenu(), true);
 
     const pickerTree = render();
     const menu = pickerTree.find(
@@ -388,4 +397,27 @@ test('closing the confirmation returns focus to Share', () => {
     assert.equal(preventDefault.mock.calls.length, 1);
     assert.equal(focus.mock.calls.length, 1);
     assert.equal(sendMessage.mock.calls.length, 0);
+});
+
+test('closing Share without selecting Send does not open the picker', () => {
+    assert.equal(closeShareMenu(), false);
+    assert.equal(
+        render().some((element) => element.props.pickerScope === 'share'),
+        false,
+    );
+    assert.equal(sendMessage.mock.calls.length, 0);
+});
+
+test('copying the link does not open the recipient picker', () => {
+    const copy = render().find(
+        (element) => element.props['data-test'] === 'copy-commit-link',
+    )!;
+
+    (copy.props.onSelect as () => void)();
+    assert.equal(closeShareMenu(), false);
+    assert.equal(copyLink.mock.calls.length, 1);
+    assert.equal(
+        render().some((element) => element.props.pickerScope === 'share'),
+        false,
+    );
 });

@@ -95,7 +95,6 @@ export function CommitSecondaryActions({
                     commit={commit}
                     keyShortcut={keyShortcut}
                     canSend={canSend}
-                    isPickerMounted={isPickerMounted}
                     triggerRef={shareTriggerRef}
                     onSend={pickRecipient}
                 />
@@ -171,18 +170,17 @@ function CommitShareMenu({
     commit,
     keyShortcut,
     canSend,
-    isPickerMounted,
     triggerRef,
     onSend,
 }: {
     commit: Commit;
     keyShortcut?: string;
     canSend: boolean;
-    isPickerMounted: boolean;
     triggerRef: Ref<HTMLButtonElement>;
     onSend: () => void;
 }) {
     const { copyLink } = useCopyLink(commit);
+    const pendingSend = useRef(false);
 
     return (
         <>
@@ -217,7 +215,14 @@ function CommitShareMenu({
                     align="end"
                     className="w-48"
                     onCloseAutoFocus={(event) => {
-                        if (isPickerMounted) event.preventDefault();
+                        if (!pendingSend.current) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        pendingSend.current = false;
+                        // Open the picker after the menu has finished closing.
+                        onSend();
                     }}
                 >
                     <DropdownMenuItem
@@ -234,7 +239,9 @@ function CommitShareMenu({
                     </DropdownMenuItem>
                     {canSend && (
                         <DropdownMenuItem
-                            onSelect={onSend}
+                            onSelect={() => {
+                                pendingSend.current = true;
+                            }}
                             data-test="share-in-remotes"
                         >
                             <Send />
