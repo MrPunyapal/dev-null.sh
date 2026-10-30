@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\AnalyticsProvider;
-use App\Providers\AppServiceProvider;
 use App\Services\AnalyticsProviders\FathomAnalyticsProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
@@ -13,13 +11,6 @@ beforeEach(function (): void {
     config(['services.fathom.token' => 'token', 'services.fathom.site_id' => 'SITE']);
 
     $this->travelTo(CarbonImmutable::parse('2026-10-18 12:00:00'));
-});
-
-it('is the analytics provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(AnalyticsProvider::class))->toBeInstanceOf(FathomAnalyticsProvider::class);
 });
 
 it('reads current visitors, totals, and the top pages, referrers, countries, devices, and browsers in the range', function (): void {

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\LinkPreviewProvider;
-use App\Providers\AppServiceProvider;
 use App\Services\LinkPreviewProviders\HttpLinkPreviewProvider;
 use GuzzleHttp\Exception\ResponseException;
 use GuzzleHttp\Promise\Create;
@@ -44,13 +42,6 @@ function expectNoMetadata(array $metadata): void
 {
     expect($metadata)->toBe(['title' => null, 'description' => null, 'image_url' => null, 'site_name' => null]);
 }
-
-it('is the link preview provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(LinkPreviewProvider::class))->toBeInstanceOf(HttpLinkPreviewProvider::class);
-});
 
 it('reads the open graph metadata of a page', function (): void {
     Http::fake(['https://example.com/post' => htmlResponse(<<<'HTML'

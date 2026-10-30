@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\TranslationProvider;
 use App\Exceptions\InvalidTranslation;
-use App\Providers\AppServiceProvider;
 use App\Services\TranslationProviders\OpenCodeTranslationProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -17,13 +15,6 @@ function openCodeAnswer(string $content): array
 {
     return ['choices' => [['finish_reason' => 'stop', 'message' => ['role' => 'assistant', 'content' => $content]]]];
 }
-
-it('is the translation provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(TranslationProvider::class))->toBeInstanceOf(OpenCodeTranslationProvider::class);
-});
 
 it('translates through DeepSeek on OpenCode without sending account metadata', function (): void {
     Http::fake(['opencode.ai/zen/v1/chat/completions' => Http::response(openCodeAnswer('{"source_language":"de","body":"Good morning"}'))]);

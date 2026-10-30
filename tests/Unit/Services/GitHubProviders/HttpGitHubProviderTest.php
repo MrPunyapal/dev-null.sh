@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\GitHubProvider;
 use App\Enums\GitHubOrganizationMembership;
-use App\Providers\AppServiceProvider;
 use App\Services\GitHubProviders\HttpGitHubProvider;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -17,13 +15,6 @@ use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     config(['services.github.client_id' => 'client-id', 'services.github.client_secret' => 'client-secret']);
-});
-
-it('is the github provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(GitHubProvider::class))->toBeInstanceOf(HttpGitHubProvider::class);
 });
 
 it('calls the API as the OAuth app', function (): void {

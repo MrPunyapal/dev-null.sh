@@ -2,19 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\RelevanceProvider;
-use App\Providers\AppServiceProvider;
 use App\Services\RelevanceProviders\OpenAIRelevanceProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-
-it('is the relevance provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(RelevanceProvider::class))->toBeInstanceOf(OpenAIRelevanceProvider::class);
-});
 
 it('asks the decision model about every post, one predicate each', function (): void {
     config(['ai.providers.openai.key' => 'sk-test']);

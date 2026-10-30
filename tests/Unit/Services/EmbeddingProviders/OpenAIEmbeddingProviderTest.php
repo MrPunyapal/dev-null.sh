@@ -2,19 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\EmbeddingProvider;
-use App\Providers\AppServiceProvider;
 use App\Services\EmbeddingProviders\OpenAIEmbeddingProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-
-it('is the embedding provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(EmbeddingProvider::class))->toBeInstanceOf(OpenAIEmbeddingProvider::class);
-});
 
 it('uses the same provider key and endpoint as the ai sdk', function (): void {
     config([

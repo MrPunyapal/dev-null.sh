@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Services\ToolDecisionProviders;
 
 use App\Ai\Tools\CommunityStats;
 use App\Ai\Tools\RepositoryInsights;
 use App\Ai\Tools\SearchCommits;
 use App\Ai\Tools\SearchKnowledgeBase;
 use App\Ai\Tools\SearchRepositoryHistory;
+use App\Contracts\Services\ToolDecisionProvider;
 use Illuminate\Support\Collection;
 use Laravel\Ai\Classification;
 use Laravel\Ai\Classification\Boolean;
@@ -18,7 +19,7 @@ use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Responses\Data\Answer;
 use Laravel\Ai\Responses\Data\BooleanAnswer;
 
-final readonly class TomToolDecision
+final readonly class OpenAIToolDecisionProvider implements ToolDecisionProvider
 {
     private const string Policy = <<<'TEXT'
         Decide whether this tool is needed to answer the latest message to Tom, the /dev/null community bot.
@@ -48,7 +49,7 @@ final readonly class TomToolDecision
      * @param  iterable<int, Message>  $history
      * @return Collection<int, Tool>
      */
-    public function decide(string $message, iterable $history): Collection
+    public function tools(string $message, iterable $history): Collection
     {
         $selected = Classification::of(collect([
             'history' => collect($history)->map(fn (Message $message): array => [

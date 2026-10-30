@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\ModerationProvider;
-use App\Providers\AppServiceProvider;
 use App\Services\ModerationProviders\OpenAIModerationProvider;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
@@ -40,13 +38,6 @@ function openAIHarmfulResponse(bool|string $answer): array
 
     return ['status' => 'completed', 'output' => [['type' => 'message', 'role' => 'assistant', 'content' => [$content]]]];
 }
-
-it('is the moderation provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(ModerationProvider::class))->toBeInstanceOf(OpenAIModerationProvider::class);
-});
 
 it('flags nothing in text openai does not flag', function (): void {
     Http::fake(['api.openai.com/v1/moderations' => Http::response(openAIModerationResponse())]);

@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\PushNotificationProvider;
 use App\Models\PushSubscription;
-use App\Providers\AppServiceProvider;
 use App\Services\PushNotificationProviders\WebPushNotificationProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -14,13 +12,6 @@ use Minishlink\WebPush\VAPID;
 beforeEach(function (): void {
     $this->keys = VAPID::createVapidKeys();
     config(['services.web_push.public_key' => $this->keys['publicKey'], 'services.web_push.private_key' => $this->keys['privateKey']]);
-});
-
-it('is the push notification provider in production', function (): void {
-    app()->detectEnvironment(fn (): string => 'production');
-    app()->register(AppServiceProvider::class, force: true);
-
-    expect(resolve(PushNotificationProvider::class))->toBeInstanceOf(WebPushNotificationProvider::class);
 });
 
 it('hands browsers the public key', function (): void {

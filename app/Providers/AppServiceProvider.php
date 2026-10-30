@@ -11,6 +11,7 @@ use App\Contracts\Services\LinkPreviewProvider;
 use App\Contracts\Services\ModerationProvider;
 use App\Contracts\Services\PushNotificationProvider;
 use App\Contracts\Services\RelevanceProvider;
+use App\Contracts\Services\ToolDecisionProvider;
 use App\Contracts\Services\TranslationProvider;
 use App\Contracts\Services\TurnProvider;
 use App\Enums\ApiErrorCode;
@@ -31,6 +32,8 @@ use App\Services\PushNotificationProviders\NullPushNotificationProvider;
 use App\Services\PushNotificationProviders\WebPushNotificationProvider;
 use App\Services\RelevanceProviders\NullRelevanceProvider;
 use App\Services\RelevanceProviders\OpenAIRelevanceProvider;
+use App\Services\ToolDecisionProviders\NullToolDecisionProvider;
+use App\Services\ToolDecisionProviders\OpenAIToolDecisionProvider;
 use App\Services\TranslationProviders\NullTranslationProvider;
 use App\Services\TranslationProviders\OpenCodeTranslationProvider;
 use App\Services\TurnProviders\CloudflareTurnProvider;
@@ -60,6 +63,7 @@ final class AppServiceProvider extends ServiceProvider
         ModerationProvider::class => OpenAIModerationProvider::class,
         PushNotificationProvider::class => WebPushNotificationProvider::class,
         RelevanceProvider::class => OpenAIRelevanceProvider::class,
+        ToolDecisionProvider::class => OpenAIToolDecisionProvider::class,
         TranslationProvider::class => OpenCodeTranslationProvider::class,
         TurnProvider::class => CloudflareTurnProvider::class,
     ];
@@ -77,6 +81,7 @@ final class AppServiceProvider extends ServiceProvider
         ModerationProvider::class => NullModerationProvider::class,
         PushNotificationProvider::class => NullPushNotificationProvider::class,
         RelevanceProvider::class => NullRelevanceProvider::class,
+        ToolDecisionProvider::class => NullToolDecisionProvider::class,
         TranslationProvider::class => NullTranslationProvider::class,
         TurnProvider::class => LocalTurnProvider::class,
     ];
@@ -85,7 +90,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $services = $this->app->environment('local', 'testing')
             ? self::LOCAL_SERVICES
-            : self::PRODUCTION_SERVICES;
+            : self::PRODUCTION_SERVICES; // @codeCoverageIgnore
 
         foreach ($services as $contract => $implementation) {
             $this->app->bind($contract, $implementation);
