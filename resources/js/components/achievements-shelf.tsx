@@ -4,7 +4,6 @@ import {
     BotOff,
     Box,
     ChevronRight,
-    Cookie,
     FileCode,
     Flame,
     GitMerge,
@@ -19,6 +18,7 @@ import {
 import type { CSSProperties } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DragonBallIcon } from '@/components/dragon-ball-icon';
+import { PastelIcon } from '@/components/pastel-icon';
 import {
     Popover,
     PopoverContent,
@@ -47,7 +47,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     sparkles: Sparkles,
     'git-merge': GitMerge,
     key: Key,
-    cookie: Cookie,
+    cookie: PastelIcon,
     'bot-off': BotOff,
     bomb: Bomb,
     'dragon-ball': DragonBallIcon,
@@ -348,6 +348,9 @@ export function AchievementsShelf({
                                                     badge.unlocked
                                                         ? 'text-foreground'
                                                         : 'text-muted-foreground/50',
+                                                    badge.icon === 'cookie' &&
+                                                        !badge.unlocked &&
+                                                        'grayscale opacity-50',
                                                 )}
                                             />
                                             <span>{badge.name}</span>

@@ -2,7 +2,6 @@ import {
     Bomb,
     BotOff,
     Box,
-    Cookie,
     FileCode,
     Flame,
     GitMerge,
@@ -17,6 +16,7 @@ import {
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { DragonBallIcon } from '@/components/dragon-ball-icon';
+import { PastelIcon } from '@/components/pastel-icon';
 import {
     Dialog,
     DialogDescription,
@@ -42,7 +42,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     sparkles: Sparkles,
     'git-merge': GitMerge,
     key: Key,
-    cookie: Cookie,
+    cookie: PastelIcon,
     'bot-off': BotOff,
     bomb: Bomb,
     'dragon-ball': DragonBallIcon,
@@ -189,7 +189,15 @@ export function AchievementsDialog({
                                                             : 'border-border/60 bg-muted text-muted-foreground/60',
                                                     )}
                                                 >
-                                                    <Icon className="size-3.5" />
+                                                    <Icon
+                                                        className={cn(
+                                                            'size-3.5',
+                                                            badge.icon ===
+                                                                'cookie' &&
+                                                                !badge.unlocked &&
+                                                                'grayscale opacity-50',
+                                                        )}
+                                                    />
                                                 </div>
                                                 <span className="font-semibold text-foreground">
                                                     {badge.name}
