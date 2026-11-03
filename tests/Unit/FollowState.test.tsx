@@ -383,6 +383,37 @@ for (const type of [
     }
 }
 
+test('hides Mutuals on your own connections, but keeps it on other profiles', () => {
+    const titlesFor = (id: string): string[] => {
+        const page = Connections({
+            user: suggestion(id),
+            type: 'followers',
+            users: {
+                data: [],
+                next_cursor: null,
+                prev_cursor: null,
+            },
+        });
+        const navigation = find(
+            page,
+            (props) => props.label === 'Connections' && Array.isArray(props.tabs),
+        );
+        assert.ok(navigation);
+
+        return (navigation.props.tabs as { title: string }[]).map(
+            (tab) => tab.title,
+        );
+    };
+
+    assert.deepEqual(titlesFor('viewer'), ['Followers', 'Following']);
+    assert.deepEqual(titlesFor('someone-else'), [
+        'Followers',
+        'Followers you know',
+        'Following',
+        'Mutuals',
+    ]);
+});
+
 for (const isFollowing of [true, false]) {
     test(`your own Followers list hides the redundant follows-you badge (following=${isFollowing})`, () => {
         const page = Connections({
