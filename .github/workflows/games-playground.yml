@@ -9,6 +9,10 @@ on:
       - '.github/workflows/games-playground.yml'
   workflow_dispatch:
 
+concurrency:
+  group: games-playground-pages
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
