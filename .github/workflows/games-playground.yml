@@ -1,0 +1,59 @@
+name: Games Playground
+
+on:
+  push:
+    branches:
+      - games-playground
+    paths:
+      - 'docs/**'
+      - '.github/workflows/games-playground.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test game prototypes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check docs/shared.js
+          node --check docs/games.js
+          node --check docs/app.js
+      - name: Run game smoke tests
+        run: node --test docs/tests/*.test.mjs
+
+  build:
+    name: Upload static site
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  deploy:
+    name: Publish playground
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
