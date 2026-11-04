@@ -18,23 +18,23 @@ The site is pure HTML, CSS and JavaScript modules. It needs no build step, packa
 
 ## Run locally
 
-From the repository root, serve the \`docs\` directory with a static web server, then open the local address. For example:
+From the repository root, serve the `docs` directory with a static web server, then open the local address. For example:
 
-\`\`\`sh
+```sh
 python3 -m http.server 8080 --directory docs
-\`\`\`
+```
 
 Run smoke tests from the repository root with Node.js 22 or newer:
 
-\`\`\`sh
+```sh
 node --test docs/tests/*.test.mjs
-\`\`\`
+```
 
 ## Deploy
 
-This branch includes a GitHub Actions workflow at \`.github/workflows/games-playground.yml\`. In the fork's **Settings → Pages**, choose **GitHub Actions** as the deployment source. The workflow tests the games and publishes the contents of \`docs/\` when the \`games-playground\` branch changes.
+This branch includes a GitHub Actions workflow at `.github/workflows/games-playground.yml`. In the fork's **Settings → Pages**, choose **GitHub Actions** as the deployment source. The workflow tests the games and publishes the contents of `docs/` when the `games-playground` branch changes.
 
-The expected project Pages URL is \`https://mrpunyapal.github.io/dev-null.sh/\`, once Pages is enabled and deployment succeeds. Do not treat it as live before verifying it.
+The expected project Pages URL is `https://mrpunyapal.github.io/dev-null.sh/`, once Pages is enabled and deployment succeeds. Do not treat it as live before verifying it.
 
 ## Limits
 
@@ -44,4 +44,4 @@ The expected project Pages URL is \`https://mrpunyapal.github.io/dev-null.sh/\`,
 - No ranked-attempt enforcement, public leaderboards, accounts, XP or streak tracking.
 - No images, third-party libraries, external services or telemetry.
 
-The goal is to evaluate which games are actually fun. The entire playground is isolated on the fork's \`games-playground\` branch, leaving the production Laravel app unchanged.
+The goal is to evaluate which games are actually fun. The entire playground is isolated on the fork's `games-playground` branch, leaving the production Laravel app unchanged.
