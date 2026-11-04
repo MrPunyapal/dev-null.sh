@@ -32,10 +32,26 @@ function save() {
   }
 }
 function header() {
+  const current = activeGame?.id;
+  const gameLinks = GAMES.map(g =>
+    '<a class="sidebar-game' + (current === g.id ? ' active' : '') + '" href="#/' + g.id + '"' +
+    (current === g.id ? ' aria-current="page"' : '') +
+    '><span aria-hidden="true">' + g.emoji + '</span><span>' + g.name + '</span></a>'
+  ).join('');
   return '<header class="site-header"><div class="shell">' +
-    '<a class="brand" href="#/" aria-label="Games Playground homepage"><span class="brand-logo">/&gt;</span><span>/dev/null <span class="brand-sub">games</span></span></a>' +
-    '<nav class="nav-right" aria-label="Main navigation"><a href="#/">All games</a>' +
-    '<a href="https://github.com/MrPunyapal/dev-null.sh/tree/games-playground/docs" target="_blank" rel="noopener noreferrer">Source ↗</a></nav>' +
+    '<a class="brand" href="#/" aria-label="/dev/null Games Playground homepage">' +
+    '<span class="brand-symbol" aria-hidden="true"><svg viewBox="1.6 1.5 45 45" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 42h10L26 6H16Z" fill="currentColor"/>' +
+    '<path fill="#ff8a4c" fill-rule="evenodd" clip-rule="evenodd" d="M17.81 43.5h13.22L46.19 4.5H32.97ZM22.19 40.5l12.84-33h6.78l-12.84 33Z"/>' +
+    '</svg></span><span class="brand-copy"><span class="brand-wordmark">/dev<span class="brand-stroke">/</span>null</span>' +
+    '<span class="brand-sub">games playground</span></span></a>' +
+    '<div class="sidebar-content">' +
+    '<nav class="nav-right" aria-label="Playground navigation"><span class="nav-caption">PLAYGROUND</span>' +
+    '<a class="nav-link' + (!current ? ' active' : '') + '" href="#/"' + (!current ? ' aria-current="page"' : '') + '>▦ <span>All games</span></a>' +
+    '<a class="nav-link" href="https://dev-null.sh/" target="_blank" rel="noopener noreferrer">↗ <span>/dev/null</span></a>' +
+    '</nav><nav class="sidebar-games" aria-label="Choose a game"><span class="nav-caption">GAMES</span>' +
+    gameLinks + '</nav></div>' +
+    '<div class="sidebar-bottom"><span class="sidebar-mark" aria-hidden="true">⌘</span> Built for a coffee break.<br>Open source. No sign-in.</div>' +
     '</div></header>';
 }
 function footer() {
