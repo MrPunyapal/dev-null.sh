@@ -36,6 +36,8 @@ This branch includes a GitHub Actions workflow at `.github/workflows/games-playg
 
 The expected project Pages URL is `https://mrpunyapal.github.io/dev-null.sh/`, once Pages is enabled and deployment succeeds. Do not treat it as live before verifying it.
 
+Any push that changes files in `docs/` on the `games-playground` branch triggers the workflow automatically. You can also run **Games Playground → Run workflow** manually and select that branch. Confirm the **Publish playground** job succeeds before sharing the URL.
+
 ## Limits
 
 - Daily content is deterministic based on the UTC date and game ID.
